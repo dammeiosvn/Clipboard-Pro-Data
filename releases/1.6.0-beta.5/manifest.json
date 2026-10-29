@@ -1,0 +1,18 @@
+{
+  "version": "1.6.0-beta.5",
+  "format": "clipboard-pro-catalog-v1",
+  "digestInput": "UTF-8 bytes of the ASCII payload value, not the outer JSON document",
+  "payloadSHA256": "2a9eea74234c6f021f31e253cb3b0ef61679e5c1908c845ccad0a75706a65c60",
+  "decodedCatalogSHA256": "60002ffa598b7e3b697ade353b145105761ead3dfd9cfb654cffa680595fe3ca",
+  "author": "©️ Sentechtipsvn",
+  "languageOrder": [
+    "vi",
+    "en",
+    "fr-FR",
+    "de-DE",
+    "es-ES",
+    "ja",
+    "ko-KR"
+  ],
+  "keysPerLanguage": 61
+}

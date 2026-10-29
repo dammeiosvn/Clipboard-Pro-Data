@@ -1,15 +1,17 @@
-# Clipboard Pro Data
+# Clipboard Pro — Official interface data
 
 ©️ Sentechtipsvn
 
-Official interface data for Clipboard Pro. Personal notes are never uploaded here. The runtime engine stays in the shortcut.
+Latest interface package: **1.6.0-beta.5**. Seven languages: Tiếng Việt (`vi`), English (`en`), Français (`fr-FR`), Deutsch (`de-DE`), Español (`es-ES`), 日本語 (`ja`), 한국어 (`ko-KR`). Each language contains the same 61 labels.
 
-## beta.3 package format
+This repository stores public interface text and release manifests. Notes and clipboard content stay in the user’s own iCloud storage and are not sent to this repository.
 
-`releases/1.6.0-beta.3/catalog.txt` is a JSON envelope with `format` and `payload` string fields. `payload` is standard Base64 for the UTF-8 interface catalog. The shortcut pins a commit and SHA-256 of the ASCII payload value. JSON key order and indentation may change without changing the payload or its digest. `catalog-readable.json` is the human-readable companion; it is not downloaded by the runtime.
+Release files are immutable. The shortcut pins a commit URL and SHA-256 of the ASCII `payload` field in `catalog.txt`; JSON key order and outer whitespace do not affect verification. Base64 is encoding, not encryption or copy protection.
 
-This fixes beta.2's false verification failure after iOS reserializes JSON during file I/O. Downloads, staged files and active caches are checked separately. Base64 is an encoding, not encryption or copy protection.
+The beta.5 engine adds five languages, a clean About title and a viewer without a duplicate heading. Existing beta.3/beta.4 installations continue to use their pinned package. Install the beta.5 shortcut to access the seven-language catalog; keep the ClipboardPro folder and notes. The first upgrade needs internet to fetch the new compatible catalog, then valid cached interface data can work offline. Interface refresh reloads the pinned package and does not update the shortcut engine automatically.
 
-The first run needs internet; subsequent runs use the verified iCloud cache. Settings and private notes remain unchanged. beta.2 release files remain available for historical builds.
+- [Readable beta.5 catalog](releases/1.6.0-beta.5/catalog-readable.json)
+- [Runtime beta.5 envelope](releases/1.6.0-beta.5/catalog.txt)
+- [Manifest](releases/1.6.0-beta.5/manifest.json)
 
-Attribution must be retained; redistribution and commercial terms require agreement with the author. This notice does not technically prevent editing or copying an editable shortcut.
+Translations are prepared for this beta and still benefit from native-speaker review. Functional simulations are separate from iPhone verification.
