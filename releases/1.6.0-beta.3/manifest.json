@@ -1,0 +1,8 @@
+{
+  "version": "1.6.0-beta.3",
+  "format": "clipboard-pro-catalog-v1",
+  "digestInput": "UTF-8 bytes of the ASCII payload value, not the outer JSON document",
+  "payloadSHA256": "368e433d7a28ee90fcb0db37936eaef322b819cb1d0d168d127f3fd282277375",
+  "decodedCatalogSHA256": "dfebcb531f82a1565c7fb6928c23aad29301ba9192e0e3f23f723da109fe78c4",
+  "author": "©️ Sentechtipsvn"
+}
