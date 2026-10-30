@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0-beta.4",
+  "productId": "private-photo",
+  "format": "private-photo-catalog-v1",
+  "payloadSHA256": "f6dd4045468ef6374ae62425f405c9ff1aadbae63eff7051436c06ffc2c10af0",
+  "decodedCatalogSHA256": "28fbbb4488e0c49eddf86f8c0d0050c0d606519ed43a821bfcc62e437776405e",
+  "languages": [
+    "vi",
+    "en"
+  ],
+  "keysPerLanguage": 88,
+  "author": "©️ Sentechtipsvn"
+}

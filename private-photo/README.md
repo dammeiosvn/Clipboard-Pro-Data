@@ -2,18 +2,14 @@
 
 ©️ Sentechtipsvn
 
-This directory shares the existing Clipboard-Pro-Data repository. Private Photo and Clipboard Pro have separate product identifiers, release paths, caches and user-data folders.
+Current package: **1.0.0-beta.4**, Vietnamese and English, 88 labels per locale.
 
-Current interface package: **1.0.0-beta.1**, with Vietnamese and English, **83 labels per locale**.
+This directory shares Clipboard-Pro-Data but uses separate release paths and caches. It contains public interface labels only, never user images, settings or indexes.
 
-This repository contains public interface labels and release metadata. It does not contain users' images, image indexes, notes, passwords or vault settings. The shortcut downloads its pinned interface package and caches it in iCloud Drive/Shortcuts/PrivatePhoto. It does not upload images to this repository.
+- [Runtime envelope](releases/1.0.0-beta.4/catalog.txt)
+- [Readable labels](releases/1.0.0-beta.4/catalog-readable.json)
+- [Manifest](releases/1.0.0-beta.4/manifest.json)
 
-- [Readable labels](releases/1.0.0-beta.1/catalog-readable.json)
-- [Runtime envelope](releases/1.0.0-beta.1/catalog.txt)
-- [Manifest](releases/1.0.0-beta.1/manifest.json)
+The beta.4 engine pins a commit URL and verifies the payload SHA-256. Upgrading downloads the new compatible interface package once, then uses its local cache when available. Existing settings, albums and images are kept. Older engines retain their pinned beta.1 package.
 
-The shortcut pins the release to a commit URL and verifies SHA-256 of the envelope's ASCII payload. Refresh reloads the pinned compatible package; it does not silently update the workflow engine. Subsequent offline use requires the cached package and relevant iCloud files to be available locally.
-
-**Storage is Base64 encoding, not password encryption.** Anyone who can read the vault folder can recover the images. Hash verification is an integrity check, not encryption or copy protection. Original images are kept by the shortcut.
-
-Future versions should receive new immutable release paths. Do not replace a released payload in place. Clipboard Pro's existing files are independent of this package.
+Base64 storage is not password encryption. Images are not uploaded here. Released package paths remain immutable.
