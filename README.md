@@ -65,3 +65,7 @@ Release paths are immutable. The shortcut pins a commit URL and checks SHA-256 o
 | zh-TW | 繁體中文 |
 
 Translations were prepared for this beta and have not all been independently reviewed by native speakers. Automated checks validate structure and simulated flows, not every native-device rendering or linguistic nuance.
+
+## Private Photo interface package
+
+[Private Photo](private-photo/README.md) now shares this repository for its own public Vietnamese and English interface package. Its release files and local folders are separate from Clipboard Pro. No user images are stored here.
