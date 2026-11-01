@@ -19,13 +19,19 @@ JS = r'"(?:[^"\\\x00-\x1f]|\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))*"'
 PAIR = JS + r'\s*:\s*' + JS
 FLAT = r'\{\s*(?:' + PAIR + r'(?:\s*,\s*' + PAIR + r')*)?\s*\}'
 FLAT_PATTERN = r'\A\s*' + FLAT + r'\s*\z'
+PIN_PAIR = JS + r'\s*:\s*(?:' + JS + r'|[01])'
+PIN_MAP = r'\{\s*(?:' + PIN_PAIR + r'(?:\s*,\s*' + PIN_PAIR + r')*)?\s*\}'
 B64 = r'\A(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?\z'
 B64_BODY = B64[2:-2]
 STATE_PARTS = [r'"product"\s*:\s*"applist-pro"', r'"schema"\s*:\s*"2"',
     r'"language"\s*:\s*' + JS, r'"languagePayload"\s*:\s*"' + B64_BODY + '"']
-STATE_PARTS += ['"' + key + r'"\s*:\s*' + FLAT for key in ('names', 'bundles', 'stores', 'pins')]
-# The encoded state is produced in this order; iOS only reformats the OUTER envelope.
-STATE_PATTERN = r'\A\s*\{\s*' + r'\s*,\s*'.join(STATE_PARTS) + r'\s*\}\s*\z'
+STATE_PARTS += ['"' + key + r'"\s*:\s*' + (PIN_MAP if key == 'pins' else FLAT)
+                for key in ('names', 'bundles', 'stores', 'pins')]
+# Exactly eight allowed properties, in any order. A separate key-count guard
+# rejects duplicate/missing properties after parsing. JSON property order is
+# never an integrity or compatibility boundary.
+STATE_FIELD = '(?:' + '|'.join(STATE_PARTS) + ')'
+STATE_PATTERN = r'\A\s*\{\s*' + STATE_FIELD + r'(?:\s*,\s*' + STATE_FIELD + r'){7}\s*\}\s*\z'
 BUNDLE = r'\A[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+\z'
 NAME = r'\A(?![⭐⚙↩])[^\x00-\x1f\x7f\r\n]{1,90}\z'
 STORE = r'\Ahttps://apps\.apple\.com/(?:[^\s/#?]+/)*id[0-9]+(?:\?[^\s#]*)?(?:#[^\s]*)?\z'
@@ -41,18 +47,21 @@ def build():
     a, get, text, put, L = w.action, w.get, w.text, w.put, w.label
 
     def exists_key(source, key):
-        # Array membership; do not turn keys into a substring comparison.
+        # iOS 18 renders beta2's array-typed Contains with a missing RHS.
+        # IDs in these maps are SHA-256 hex values. Combine explicitly and
+        # match a whole quoted line instead of using an array predicate.
         keys = w.keys(source)
-        group = w.uid('key')
-        a('conditional', {'WFInput': {'Type': 'Variable', 'Variable': ref(keys)},
-            'WFCondition': 99, 'WFConditionalActionString': token(key),
-            'GroupingIdentifier': group, 'WFControlFlowMode': 0})
-        return group
+        w.set('KeyMatchCount', w.count(keys))
+        populated = w.if_gt(v('KeyMatchCount'))
+        lines = a('text.combine', {'text': ref(keys), 'WFTextSeparator': 'New Lines'}, 'Stored app IDs')
+        w.set('KeyMatchCount', w.count(w.match(lines, r'(?m)^\Q', key, r'\E$')))
+        w.end_if(populated)
+        return w.if_gt(v('KeyMatchCount'))
 
-    def check(value, expected, message='invalidData'):
+    def check(value, expected, message='invalidData', code=None):
         group = w.if_eq(value, expected)
         w.otherwise(group)
-        w.alert(L(message), stop=True, title=TITLE)
+        w.alert(text(L(message), '\n\n', code) if code else L(message), stop=True, title=TITLE)
         w.end_if(group)
 
     def read(name):
@@ -99,6 +108,7 @@ def build():
         body = decode(v('VerifiedPayload'))
         guards.append(w.if_match(body, STATE_PATTERN))
         data = a('detect.dictionary', {'WFInput': ref(body)}, 'AppList state')
+        guards.append(w.if_eq(w.count(w.keys(data)), '8'))
         lang = text(get(data, 'language'))
         languages = get(v('Config'), 'languages')
         guards.append(w.if_match(lang, r'\A(?:' + '|'.join(descriptors) + r')\z'))
@@ -126,9 +136,16 @@ def build():
 
     def persist():
         # Serialize names/URLs through native Dictionary -> Text, never raw user interpolation.
+        # An empty native Dictionary may coerce to zero text items. Emit {} as
+        # an explicit JSON scalar instead of interpolating an absent item.
+        for collection in ('Names', 'Bundles', 'Stores', 'Pins'):
+            w.assign(collection + 'JSON', '{}')
+            populated = w.if_has(w.keys(v(collection)))
+            w.set(collection + 'JSON', text(v(collection)))
+            w.end_if(populated)
         body = text('{"product":"applist-pro","schema":"2","language":"', v('Language'),
-            '","languagePayload":"', v('LanguagePayload'), '","names":', v('Names'),
-            ',"bundles":', v('Bundles'), ',"stores":', v('Stores'), ',"pins":', v('Pins'), '}',
+            '","languagePayload":"', v('LanguagePayload'), '","names":', v('NamesJSON'),
+            ',"bundles":', v('BundlesJSON'), ',"stores":', v('StoresJSON'), ',"pins":', v('PinsJSON'), '}',
             name='New state JSON')
         encoded = a('base64encode', {'WFInput': ref(body, 'WFStringContentItem'),
             'WFEncodeMode': 'Encode', 'WFBase64LineBreakMode': 'None'}, 'Encode state')
@@ -136,6 +153,9 @@ def build():
         w.set('NewDigest', w.hash(v('NewPayload')))
         env = a('dictionary', {'WFItems': dictionary_value({'format': FORMAT,
             'payload': v('NewPayload'), 'sha256': v('NewDigest')})}, 'State envelope')
+        candidate(env)
+        check(v('CandidateOK'), '1', 'saveFailed', 'AP201')
+        check(v('CandidateDigest'), v('NewDigest'), 'saveFailed', 'AP201')
         # Check the current local revision before overwriting another session.
         disk_known = w.if_match(v('DiskDigest'), r'\A[0-9a-f]{64}\z')
         inspect(read('active.json'))
@@ -163,6 +183,9 @@ def build():
         inspect(read('active.json'))
         check(v('EnvelopeOK'), '1', 'saveFailed')
         check(v('VerifiedDigest'), v('NewDigest'), 'saveFailed')
+        candidate(read('active.json'))
+        check(v('CandidateOK'), '1', 'saveFailed', 'AP205')
+        check(v('CandidateDigest'), v('NewDigest'), 'saveFailed', 'AP205')
         w.set('ActiveEnvelope', env)
         w.set('ActiveDigest', v('NewDigest'))
         w.set('DiskDigest', v('NewDigest'))
@@ -387,7 +410,7 @@ def build():
     # Only process incoming content when explicitly launched from a share sheet.
     incoming = {'Type': 'ExtensionInput'}
     shared = w.if_has(incoming)
-    urls = a('detect.urls', {'WFInput': ref(incoming)}, 'Shared URLs')
+    urls = a('detect.link', {'WFInput': ref(incoming)}, 'Shared URLs')
     has_url = w.if_has(urls)
     w.set('SharedLink', text(w.first(urls)))
     shared_valid = w.if_match(v('SharedLink'), STORE)

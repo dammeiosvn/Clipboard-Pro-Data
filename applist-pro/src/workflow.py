@@ -157,7 +157,7 @@ class Workflow:
 
     def replace(self, value, pattern, replacement='', regex=True):
         return self.action('text.replace', {'WFInput': token(value),
-            'WFReplaceTextFind': token(pattern), 'WFReplaceTextReplace': token(replacement),
+            'WFReplaceTextFind': string_parameter(pattern), 'WFReplaceTextReplace': string_parameter(replacement),
             'WFReplaceTextRegularExpression': regex, 'WFReplaceTextCaseSensitive': True}, 'Normalized text')
 
     def if_eq(self, value, *other):

@@ -2,8 +2,8 @@
   "signed": true,
   "format": "AEA1",
   "mode": "anyone",
-  "bytes": 115560,
-  "sha256": "8cc0ca500be5181e5c099fc4d62057cf648f354542338d56e4168d1e1f91495b",
-  "inputSHA256": "a3f7fb3f4e7149b7094ad57601d61b7c13aec11e197eed71c8efc9cbd08c69d2",
+  "bytes": 130578,
+  "sha256": "9a2235cc9885a35baff9f8e94ce67f53e817ca6badd96706259f498d19f913d6",
+  "inputSHA256": "084f7eabeb8cc1a911ec989842c849323a90adbb96d4a4a1712fcabf174654cd",
   "nativeDeviceVerified": false
 }

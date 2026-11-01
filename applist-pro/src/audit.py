@@ -8,7 +8,7 @@ import sys
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-SIGNED = ROOT / 'dist/AppList-Pro-1.1-beta2.shortcut'
+SIGNED = ROOT / 'dist/AppList-Pro-1.1-beta3.shortcut'
 
 
 def walk(value):
@@ -55,6 +55,9 @@ def audit(signed=False):
         seen.add(p['UUID'])
     assert not stack
     identifiers = [a['WFWorkflowActionIdentifier'] for a in workflow['WFWorkflowActions']]
+    contract = json.loads((ROOT / 'config/native-actions.json').read_text())
+    unknown = set(identifiers) - set(contract['identifiers'])
+    assert not unknown, ('Unknown native action identifiers', unknown)
     assert 'is.workflow.actions.runworkflow' not in identifiers
     assert 'is.workflow.actions.makepdf' not in identifiers
     assert 'is.workflow.actions.showwebpage' not in identifiers
@@ -65,7 +68,14 @@ def audit(signed=False):
         # Beta1's device failures: no item-existence checks for empty text,
         # and no obsolete picker flag on the modern Get File action.
         if a['WFWorkflowActionIdentifier'] == 'is.workflow.actions.conditional':
-            assert p.get('WFCondition') != 100
+            assert p.get('WFCondition') not in (99, 100)
+            if p.get('WFControlFlowMode') == 0:
+                if p['WFCondition'] == 4:
+                    assert p.get('WFConditionalActionString') is not None
+                elif p['WFCondition'] == 2:
+                    assert p.get('WFNumberValue') is not None
+                else:
+                    raise AssertionError(('Unreviewed native predicate', p))
         if a['WFWorkflowActionIdentifier'] == 'is.workflow.actions.documentpicker.open':
             assert not p.get('WFShowFilePicker')
             assert p.get('WFGetFilePath')
@@ -75,9 +85,13 @@ def audit(signed=False):
         if a['WFWorkflowActionIdentifier'] == 'is.workflow.actions.downloadurl':
             assert p['WFHTTPMethod'] == 'GET'
             assert not any(k in p for k in ('WFHTTPBody', 'WFFormValues', 'WFJSONValues'))
+        if a['WFWorkflowActionIdentifier'] == 'is.workflow.actions.text.combine':
+            assert p.get('text') and p.get('WFTextSeparator') == 'New Lines'
     report = {'balancedControlFlow': True, 'uniqueActionUUIDs': True,
               'validUTF16TokenSpans': spans, 'actionReferencesVerified': True,
               'actions': len(identifiers), 'binaryBytes': len(raw),
+              'nativeIdentifiersChecked': len(set(identifiers)),
+              'unsupportedArrayContainsRemoved': True,
               'signedActionGraphEqual': None, 'nativeDeviceVerified': False}
     if signed:
         import lzfse

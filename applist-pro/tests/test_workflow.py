@@ -128,6 +128,74 @@ class NativeFlowTests(unittest.TestCase):
         self.assertEqual(len(r['menus']), 1)
         self.assertEqual(r['menus'][0]['options'], ['⭐ Safari', 'Messenger', 'Messenger Kids', '⚙️ Quản lý'])
 
+    def test_setup_empty_maps_can_be_read_again_after_session_ends(self):
+        first = run(WORKFLOW, menus=['vi'], network=NETWORK, native_empty_dict_text=True,
+                    native_state_reorder=True, rewrite_json=True)
+        self.assertEqual(first['alerts'], [])
+        self.assertEqual(read_state(first)['names'], {})
+        again = run(WORKFLOW, menus=['manage', 'main'], disk=first['disk'],
+                    native_empty_dict_text=True, native_state_reorder=True, rewrite_json=True)
+        self.assertEqual(again['alerts'], [])
+        self.assertEqual(again['requests'], [])
+        self.assertEqual(again['writes'], [])
+        self.assertEqual(again['menus'][0]['options'], ['➕ Thêm ứng dụng', '⚙️ Quản lý'])
+
+    def test_new_app_is_saved_and_opens_on_the_next_run(self):
+        first = run(WORKFLOW, menus=['manage', 'add', 'search', 0], answers=['Candy'], apps=[APP],
+                    disk=disk_of(state()), native_empty_dict_text=True, native_state_reorder=True, rewrite_json=True)
+        self.assertEqual(first['alerts'], [])
+        again = run(WORKFLOW, menus=[uid(APP['bundle'])], disk=first['disk'],
+                    native_empty_dict_text=True, native_state_reorder=True, rewrite_json=True)
+        self.assertEqual(again['opened'], [APP['bundle']])
+        self.assertEqual(again['requests'], [])
+        self.assertEqual(again['writes'], [])
+
+    def test_legacy_json_is_saved_and_opens_on_the_next_run(self):
+        legacy = File('AppList_Pro.json', '{"Safari":"com.apple.mobilesafari"}')
+        first = run(WORKFLOW, menus=['manage', 'backups', 'import', 'confirm'], files=[legacy],
+                    disk=disk_of(state()), native_empty_dict_text=True, native_state_reorder=True, rewrite_json=True)
+        self.assertEqual(first['alerts'], [])
+        again = run(WORKFLOW, menus=[uid('com.apple.mobilesafari')], disk=first['disk'],
+                    native_empty_dict_text=True, native_state_reorder=True, rewrite_json=True)
+        self.assertEqual(again['opened'], ['com.apple.mobilesafari'])
+        self.assertEqual(again['alerts'], [])
+
+    def test_inner_property_order_is_not_a_cache_requirement(self):
+        source = state(RECORDS)
+        orders = [sorted(source), list(reversed(source))]
+        for offset in range(len(source)):
+            keys = list(source)
+            orders.append(keys[offset:] + keys[:offset])
+        for order in orders:
+            with self.subTest(order=order):
+                reordered = {key: source[key] for key in order}
+                r = run(WORKFLOW, menus=[uid('com.facebook.Messenger')], disk=disk_of(reordered))
+                self.assertEqual(r['opened'], ['com.facebook.Messenger'])
+                self.assertEqual(r['alerts'], [])
+
+    def test_native_numeric_pin_flags_are_supported(self):
+        source = state(RECORDS)
+        source['pins'] = {key: int(value) for key, value in source['pins'].items()}
+        r = run(WORKFLOW, menus=[uid('com.apple.mobilesafari')], disk=disk_of(source))
+        self.assertEqual(r['opened'], ['com.apple.mobilesafari'])
+        self.assertEqual(r['menus'][0]['options'][0], '⭐ Safari')
+
+    def test_extra_state_properties_are_rejected_without_overwriting(self):
+        source = state(RECORDS)
+        source['unexpected'] = 'field'
+        r = run(WORKFLOW, menus=['cancel'], disk=disk_of(source))
+        self.assertEqual(r['opened'], [])
+        self.assertEqual(r['writes'], [])
+
+    def test_deleting_last_app_keeps_a_reloadable_empty_list(self):
+        source = state([RECORDS[0]])
+        first = run(WORKFLOW, menus=['manage', 'pickDelete', uid(RECORDS[0][1]), 'confirm'],
+                    disk=disk_of(source), native_empty_dict_text=True, native_state_reorder=True)
+        again = run(WORKFLOW, menus=['manage'], disk=first['disk'],
+                    native_empty_dict_text=True, native_state_reorder=True)
+        self.assertEqual(read_state(again)['names'], {})
+        self.assertEqual(again['alerts'], [])
+
     def test_delete_exact_id_preserves_substring_name_and_can_undo(self):
         r = run(WORKFLOW, menus=['manage', 'pickDelete', uid('com.facebook.Messenger'), 'confirm'], disk=disk_of(state(RECORDS)))
         current = read_state(r)

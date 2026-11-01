@@ -1,0 +1,25 @@
+{
+  "baseline": "1.1.0-beta.2",
+  "fix": "1.1.0-beta.3",
+  "evidence": "User-provided iPhone screen recording; no user JSON content or screen captures were published",
+  "observed": [
+    "Select File opens the Files browser",
+    "Legacy import stops at an array-typed If Keys Contains with a missing comparison field",
+    "Adding an app stops at the same shared predicate",
+    "The URL extraction action appears as an unknown action",
+    "A later run returns to the recovery menu"
+  ],
+  "additionalCacheHardening": [
+    "Accept the eight allowed state properties in any order; reject missing or duplicate properties",
+    "Serialize empty collections as explicit JSON objects",
+    "Use the same complete state reader before and after saving",
+    "Test setup, add and legacy import across separate runs"
+  ],
+  "cacheCauseConfirmedOnDevice": false,
+  "fixedEngineDeviceVerified": false,
+  "fixesForObservedNativeFailures": {
+    "comparison": "Remove all condition-99 array predicates; use explicit newline combination, whole-line matching and numeric count",
+    "urlExtraction": "Replace unsupported is.workflow.actions.detect.urls with documented is.workflow.actions.detect.link",
+    "identifierAudit": "Cross-check every emitted identifier against independent reference workflows and Cherri definitions"
+  }
+}

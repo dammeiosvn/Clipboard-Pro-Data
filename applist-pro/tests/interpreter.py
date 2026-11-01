@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import base64
 import hashlib
 import json
+from pathlib import Path
 
 from icu import matches, replace
 
@@ -30,7 +31,8 @@ def stringify(value):
 
 
 def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=(), incoming=None,
-        rewrite_json=False, fail_save=None, corrupt_save=None, unavailable_apps=(), on_read=None):
+        rewrite_json=False, fail_save=None, corrupt_save=None, unavailable_apps=(), on_read=None,
+        native_empty_dict_text=False, native_state_reorder=False, strict_native=True):
     actions = workflow['WFWorkflowActions']
     blocks, stack = {}, []
     for i, action in enumerate(actions):
@@ -53,9 +55,21 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
     variables, outputs = result['variables'], {}
     depth = 0
     json_reads = 0
+    contract = json.loads((Path(__file__).resolve().parents[1] / 'config/native-actions.json').read_text())
+    known_ids = set(contract['identifiers'])
 
     def as_text(value):
         nonlocal json_reads
+        if native_empty_dict_text and isinstance(value, dict) and not value:
+            return ''
+        if native_state_reorder and isinstance(value, File):
+            try:
+                data = json.loads(value.body)
+            except ValueError:
+                pass
+            else:
+                if isinstance(data, dict) and data.get('product') == 'applist-pro':
+                    return json.dumps(data, ensure_ascii=False, sort_keys=True, indent=2)
         if rewrite_json and isinstance(value, File) and value.name.endswith('.json'):
             try:
                 data = json.loads(value.body)
@@ -124,6 +138,10 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
             a = actions[i]
             p = a['WFWorkflowActionParameters']
             kind = a['WFWorkflowActionIdentifier'].removeprefix('is.workflow.actions.')
+            if strict_native and a['WFWorkflowActionIdentifier'] not in known_ids:
+                result['status'] = 'unknown-action'
+                result['nativeErrorAction'] = a['WFWorkflowActionIdentifier']
+                raise Halt()
             if i in blocks:
                 block = blocks[i]
                 if kind == 'conditional':
@@ -133,6 +151,10 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
                     elif condition == 99:
                         rhs = stringify(evaluate(p['WFConditionalActionString']))
                         assert isinstance(lhs, list), 'Only exact array membership is used'
+                        if strict_native:
+                            result['status'] = 'missing-native-parameter'
+                            result['nativeErrorAction'] = 'Array Contains (beta2 iOS template)'
+                            raise Halt()
                         yes = rhs in lhs
                     elif condition == 100:
                         # A Text item can exist while its characters are empty.
@@ -189,6 +211,9 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
             elif kind == 'text.split':
                 assert p['WFTextSeparator'] == 'New Lines'
                 answer = stringify(evaluate(p['text'])).split('\n')
+            elif kind == 'text.combine':
+                assert p['WFTextSeparator'] == 'New Lines'
+                answer = '\n'.join(map(stringify, seq(evaluate(p['text']))))
             elif kind == 'hash':
                 answer = hashlib.sha256(stringify(evaluate(p['WFInput'])).encode()).hexdigest()
             elif kind == 'detect.dictionary':
@@ -305,7 +330,7 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
                     result['status'] = 'network-error'
                     raise Halt()
                 answer = network[url]
-            elif kind == 'detect.urls':
+            elif kind in ('detect.link', 'detect.urls'):
                 answer = seq(evaluate(p['WFInput']))
             elif kind in ('openapp', 'openurl'):
                 value = stringify(evaluate(p['WFSelectedApp'] if kind == 'openapp' else p['WFInput']))

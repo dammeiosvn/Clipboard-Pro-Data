@@ -1,6 +1,6 @@
 # AppList Pro
 
-© Sentechtipsvn · 1.1.0-beta.2
+© Sentechtipsvn · 1.1.0-beta.3
 
 A native iOS quick launcher. The first screen is the user's app list: tap an
 app to open it. Pinned apps appear first. Management and Info are secondary.
@@ -8,7 +8,7 @@ The normal launch path reads local data, makes no HTTP request and writes no fil
 
 ## Dành cho người dùng
 
-1. Cài tệp AppList-Pro-1.1-beta2.shortcut và chạy trong ứng dụng Phím tắt.
+1. Cài tệp AppList-Pro-1.1-beta3.shortcut và chạy trong ứng dụng Phím tắt.
 2. Chọn ngôn ngữ. Lần đầu cần mạng để tải đúng một bộ ngôn ngữ từ repo này.
 3. Chọn **Thêm ứng dụng → Tìm theo tên**, tìm và chọn ứng dụng đã cài trên iPhone.
    Hoặc dán liên kết App Store; cũng có thể chia sẻ liên kết từ App Store vào phím tắt.
@@ -26,14 +26,40 @@ Tìm trên App Store chỉ mở trang ứng dụng để bạn tự tải. Phím
 Nếu app không mở, kiểm tra ứng dụng đã cài rồi chạy lại phím tắt; bạn vẫn có
 thể sửa hoặc xoá mục trong Quản lý.
 
-## Sửa lỗi của beta1
+## Sửa lỗi của beta2
+
+Video beta2 trên iPhone xác nhận trình chọn Files đã mở được, nhưng cả thêm
+ứng dụng và nhập danh sách dừng ở tác vụ **Nếu Keys chứa** bị thiếu tham số
+trong giao diện native. Beta3 bỏ toàn bộ điều kiện Contains trên mảng ở phần
+kiểm tra ID. Các khoá ID được kết hợp thành văn bản có dấu phân cách rõ ràng,
+sau đó đối chiếu nguyên dòng bằng regex và điều kiện số lượng kết quả > 0.
+
+Tác vụ lấy URL được sửa từ mã không tồn tại `detect.urls` sang `detect.link`.
+Mọi mã tác vụ trong bản tạo ra được đối chiếu với các bản tham chiếu độc lập
+ở `config/native-actions.json`; kiểm tra cấu trúc cũng chặn hai mẫu điều kiện
+đã gây lỗi trên thiết bị.
+
+Bộ đọc trạng thái nhận tám thuộc tính ở mọi thứ tự, vẫn kiểm tra kiểu và tên
+thuộc tính, đồng thời chặn thuộc tính trùng hoặc thiếu. Khi danh sách rỗng,
+phần ghi dữ liệu tạo đối tượng JSON `{}` rõ ràng. Dữ liệu mới được chạy qua
+chính bộ đọc trước khi ghi và đọc lại sau khi ghi. Nếu bước tự kiểm tra không
+qua, thông báo có mã AP201 (trước ghi) hoặc AP205 (sau ghi) để xác định bước.
+
+Các phép thử bổ sung thực hiện thiết lập, thêm hoặc nhập, kết thúc phiên rồi
+chạy lại mở ứng dụng. Có kiểm tra thay đổi thứ tự thuộc tính và tình huống ép
+kiểu từ điển rỗng thành không có văn bản. Hai tình huống sau là kiểm tra độ
+bền; chưa có tệp active.json của người dùng để kết luận đó là nguyên nhân
+chính xác của màn hình phục hồi lặp lại trong video. Chúng không thay cho
+việc xác nhận bản beta3 trên iPhone.
+
+## Sửa lỗi trước đó của beta1
 
 Beta2 sửa hai lỗi đã thấy trong video trên iPhone: thiết lập mới báo nhầm
 “Danh sách đã thay đổi ở một phiên khác”, và nút Nhập từ tệp không mở trình
 chọn tệp. Kiểm tra chuỗi rỗng nay dùng số ký tự hoặc định dạng mã kiểm tra;
 nhập tệp dùng tác vụ Select File riêng của iOS hiện hành.
 
-Nếu beta1 đã lỗi, cài beta2 rồi chạy. Khi hiện màn hình phục hồi, chọn
+Nếu bản cũ đã lỗi, cài beta3 rồi chạy. Khi hiện màn hình phục hồi, chọn
 **New list / Danh sách mới** để thiết lập, hoặc **Import from file** để chọn
 JSON cũ/bản sao lưu. Không cần xoá thư mục dữ liệu. Nhập JSON cũ từ màn hình
 phục hồi sẽ giữ tệp đã chọn trong lúc bạn chọn ngôn ngữ, rồi quay lại xác nhận
@@ -103,7 +129,7 @@ Each language package is pinned by its payload SHA-256 in the generated
 workflow. **Reload language pack** reloads the compatible package for this
 version; it does not silently replace the shortcut engine. Release paths are
 immutable. Publish a new release and rebuild to change the pinned content.
-The beta2 engine deliberately reuses the unchanged beta1 interface packages.
+The beta3 engine deliberately reuses the unchanged beta1 interface packages.
 
 The active state is one JSON envelope containing a stable Base64 payload and
 its checksum. Only that scalar payload is hashed, so iOS may reformat the outer

@@ -5,7 +5,7 @@ import hashlib
 import json
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '1.1.0-beta.2'
+VERSION = '1.1.0-beta.3'
 DATA_VERSION = '1.1.0-beta.1'
 BASE_URL = 'https://raw.githubusercontent.com/dammeiosvn/Clipboard-Pro-Data/main/applist-pro/releases/' + DATA_VERSION + '/'
 LANGUAGES = {
