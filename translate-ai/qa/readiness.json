@@ -1,26 +1,39 @@
 {
-  "version": "2.0-beta1",
-  "baselineActionCount": 49,
-  "scope": [
-    "Portable native settings with verified writes and fallback",
-    "Text/share/clipboard/images/screenshots/camera/Files sources",
-    "On-device OCR with editable text and no image upload",
-    "20 target languages; separate Vietnamese/English interface",
-    "Faithful/natural prompt; names and numbers preserved by instruction",
-    "Bounded text sections with completion validation and manual retry",
-    "Explicit save, literal history search and offline cache reuse",
-    "Session-only key by default; explicit readable TXT opt-in",
-    "Native result/copy/read-aloud/export menus"
+  "version": "2.0-beta2",
+  "baselineDeviceAcceptance": {
+    "version": "2.0-beta1",
+    "userConfirmedWorking": true,
+    "observedScreens": [
+      "source selection",
+      "OCR review",
+      "Vietnamese result",
+      "Japanese result",
+      "settings",
+      "truncated old info"
+    ]
+  },
+  "changedScope": [
+    "Show Result messages instead of Alerts",
+    "split about and topic guides",
+    "explicit official API key page button",
+    "selected UI pack GET and verified iCloud cache",
+    "no embedded full locale or target-name dictionaries"
   ],
-  "nativeDeviceVerified": false,
+  "settingsSchemaUnchanged": true,
+  "recordSchemaUnchanged": true,
+  "cacheIdentityUnchanged": true,
+  "rememberedKeyPolicyUnchanged": true,
+  "beta2NativeDeviceVerified": false,
   "liveProviderCalls": 0,
-  "hostTests": "qa/test-results.json",
-  "graphAudit": "qa/structural-audit.json",
-  "limits": [
-    "Native transport/I/O failures may stop the system action directly",
-    "OCR and translation quality require device/provider testing",
-    "No app-level password encryption or Keychain companion",
-    "No automatic import of the old unstructured TXT history",
-    "iCloud multi-device settings follow file-sync semantics"
-  ]
+  "remainingDeviceAcceptance": [
+    "first selected pack download and GitHub permission",
+    "expand long Show Result text and help navigation",
+    "return from official API page"
+  ],
+  "resourceGenerationReproducible": true,
+  "selectedPackBytes": {
+    "vi": 14661,
+    "en": 12821
+  },
+  "hostTestsPassed": 77
 }

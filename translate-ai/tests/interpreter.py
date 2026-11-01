@@ -64,7 +64,7 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
               'status': 'done', 'firstMenuActions': None, 'filePickers': 0, 'ignoredLegacyPickers': 0}
     variables, outputs = result['variables'], {}
     response_iter=iter(responses)
-    result.update(shown=[],copied=[],spoken=[],apiRequests=[],ocrCalls=[],deleted=[],clipboardReads=0)
+    result.update(shown=[],copied=[],spoken=[],apiRequests=[],uiRequests=[],ocrCalls=[],deleted=[],clipboardReads=0)
     depth = 0
     json_reads = 0
     contract = json.loads((Path(__file__).resolve().parents[1] / 'config/native-actions.json').read_text())
@@ -393,7 +393,22 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
                 app = evaluate(p['WFInput'])
                 answer = app[{'Name': 'name', 'Bundle Identifier': 'bundle', 'Store URL': 'url'}[p['WFContentItemPropertyName']]]
             elif kind == 'downloadurl':
-                assert p['WFURL'] == 'https://api.deepseek.com/chat/completions'
+                url=stringify(evaluate(p['WFURL']))
+                if p['WFHTTPMethod']=='GET':
+                    import re
+                    assert re.fullmatch(r'https://raw\.githubusercontent\.com/dammeiosvn/Clipboard-Pro-Data/main/translate-ai/resources/ui-v1/(vi|en)\.json',url),url
+                    assert not p.get('WFHTTPHeaders') and not p.get('WFJSONValues')
+                    result['requests'].append(url);result['uiRequests'].append(url)
+                    if not network or url not in network:
+                        result['status']='network-error';raise Halt()
+                    reply=network[url]
+                    if isinstance(reply,list):
+                        reply=reply.pop(0) if reply else None
+                    if reply is None:
+                        result['status']='network-error';raise Halt()
+                    answer=reply
+                    outputs[p['UUID']]=answer;i+=1;continue
+                assert url == 'https://api.deepseek.com/chat/completions'
                 assert p['WFHTTPMethod'] == 'POST' and p['WFHTTPBodyType'] == 'JSON'
                 body=evaluate(p['WFJSONValues']);headers=evaluate(p['WFHTTPHeaders'])
                 assert isinstance(headers['Authorization'],str) and headers['Authorization'].startswith('Bearer ')

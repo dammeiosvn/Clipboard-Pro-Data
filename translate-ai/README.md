@@ -1,4 +1,4 @@
-# Dịch thuật AI 2.0 — beta1
+# Dịch thuật AI — beta2
 
 © Sentechtipsvn
 
@@ -9,9 +9,11 @@ chọn ngôn ngữ dịch, tách riêng với ngôn ngữ giao diện.
 
 ## Cài và chạy
 
-Bản cài được bàn giao dưới tên `Translate-AI-2.0-beta1.shortcut`.
+Bản cài được bàn giao dưới tên `Translate-AI-2.0-beta2.shortcut`.
 
-1. Cài và chạy; chọn giao diện và ngôn ngữ đích mặc định.
+1. Cài và chạy khi có mạng; chọn giao diện và ngôn ngữ đích mặc định. Chỉ gói
+   giao diện đã chọn được tải từ GitHub và lưu dạng JSON trên iCloud. Lần sau dùng
+   bản đã lưu, không tải lại mỗi lần mở. Nâng cấp từ beta1 tự dùng lựa chọn cũ.
 2. Chọn Nhập văn bản, Dán từ clipboard, Photos/ảnh chụp màn hình, camera hoặc Files.
    Bạn cũng có thể chia sẻ chữ/ảnh từ ứng dụng khác thẳng vào phím tắt.
 3. Với ảnh, xem và sửa văn bản OCR trước khi dịch. Ảnh không có chữ vẫn cho nhập tay.
@@ -20,12 +22,26 @@ Bản cài được bàn giao dưới tên `Translate-AI-2.0-beta1.shortcut`.
 5. Sau khi dịch, chọn xem song ngữ, sao chép, nghe, lưu, xuất TXT hoặc dịch sang
    ngôn ngữ khác. Clipboard chỉ thay đổi khi bạn chọn Sao chép.
 
-Lấy API key từ tài khoản tại https://platform.deepseek.com/. Dịch vụ có thể tính
-phí theo tài khoản của bạn; bản chia sẻ không chứa key chung. Không cần tệp
+Lấy API key từ tài khoản riêng tại https://platform.deepseek.com/api_keys. API
+DeepSeek **có tính phí** theo token đầu vào và đầu ra; dịch đoạn ngắn thường chi
+phí thấp nhưng cần có số dư đủ dùng. Kiểm tra bảng giá hiện hành tại
+https://api-docs.deepseek.com/quick_start/pricing/. Bản chia sẻ không chứa key chung. Không cần tệp
 `PromptDT.txt`: hướng dẫn dịch mặc định đã được đóng gói trong bản này.
 
 Huỷ hộp thoại hệ thống kết thúc phiên. Nội dung chia sẻ được giữ trong bộ nhớ
 trong lúc thiết lập; không cần chia sẻ lại chỉ vì lần đầu chưa có cấu hình.
+
+## Info và hướng dẫn
+
+Cài đặt → Info và hướng dẫn có hai mục riêng:
+
+- Thông tin phím tắt: tên, tác giả và giới thiệu ngắn; không hiện số beta.
+- Hướng dẫn sử dụng: lấy API key, dịch chữ, dịch ảnh, ngôn ngữ, thư viện và dữ liệu.
+
+Nội dung dài và cảnh báo dùng Hiển thị kết quả, cho phép mở xem toàn bộ văn bản.
+Các menu chỉ giữ tiêu đề gọn. Nhánh lấy API giải thích tài khoản, cách tạo key,
+số dư và chi phí; nút Mở trang lấy API DeepSeek mở đúng trang chính thức bằng
+trình duyệt sau khi bạn chọn. Không tự mở trang hoặc tạo tài khoản thay bạn.
 
 ## Ngôn ngữ và nội dung dài
 
@@ -58,6 +74,9 @@ Dữ liệu ở `iCloud Drive/Shortcuts/TranslateAI/`:
 | --- | --- |
 | `settings.json` | Giao diện, ngôn ngữ, cách dịch và chế độ ghi nhớ key |
 | `settings.previous.json` | Cấu hình hợp lệ trước đó |
+| `ui.vi.json` / `ui.en.json` | Chỉ các gói giao diện bạn đã chọn tải |
+| `ui.<ngôn ngữ>.previous.json` | Bản dự phòng của gói đã tải |
+| `ui.<ngôn ngữ>.pending.json` | Tệp kiểm tra trong khi lưu gói |
 | `records/` | Các bản dịch bạn đã chọn lưu |
 | `staging/` | Tệp tạm trong thao tác lưu bản dịch |
 | `backups/` | Bản trước khi bạn xác nhận thay một bản dịch cũ |
@@ -71,11 +90,13 @@ chứa nội dung cần dịch.
 Bản đã lưu khớp nội dung và thiết lập được dùng lại trước khi đọc key/gọi AI.
 Bạn thấy nhãn BẢN ĐÃ LƯU. Chọn Dịch lại bằng AI để yêu cầu kết quả mới; thay bản
 lưu hiện có cần xác nhận. Tìm kiếm là tìm chữ thông thường, không phải biểu thức
-regex. Có thể xem lại và sao chép ngoại tuyến khi tệp iCloud đã có trên thiết bị.
+regex. Có thể xem lại và sao chép ngoại tuyến khi gói giao diện và tệp iCloud đã có
+trên thiết bị. Lần đầu nâng cấp beta2 cần mạng để lấy gói giao diện đã chọn.
 
 Các tệp cũ `APIkeyDeepseek.txt`, `PromptDT.txt` và `AIChat/ketqua.txt` không bị sửa,
 xoá hoặc tự chuyển đổi. Bản mới dùng thư mục riêng, không giữ bookmark iCloud
-cá nhân của bản xuất cũ. Lịch sử TXT cũ chưa được nhập tự động trong beta1.
+cá nhân của bản xuất cũ. Lịch sử TXT cũ chưa được nhập tự động. Cấu hình, key đã ghi nhớ và bản dịch JSON
+của beta1 được giữ nguyên khi nâng cấp; không xoá thư mục TranslateAI để cài bản mới.
 
 ## API key và bảo vệ dữ liệu
 
@@ -88,7 +109,7 @@ Nếu huỷ hộp thoại Files, tệp có thể còn, nhưng phím tắt không
 Bản dịch cũng là JSON đọc được, không có mã hoá bằng mật khẩu của riêng ứng dụng.
 Bảo vệ iCloud tuỳ cấu hình tài khoản của bạn. OCR chạy trên thiết bị; chỉ phần
 chữ đã chọn/sửa được gửi tới `api.deepseek.com`. Không gửi ảnh cho DeepSeek trong
-beta1, không tải code/prompt thực thi và không có proxy của tác giả.
+bản này, không tải code/prompt thực thi và không có proxy của tác giả.
 
 ## Lỗi và khả năng phục hồi
 
@@ -110,6 +131,28 @@ iCloud là đồng bộ tệp, không phải cơ sở dữ liệu giao dịch nh
 bản dịch dùng khoá nội dung riêng, còn cài đặt có thể theo lần ghi cuối nếu hai
 thiết bị chỉnh cùng lúc. Bản trước theo từng nội dung không thay thế việc bạn
 xuất bản sao lưu dài hạn.
+
+## Gói giao diện trên GitHub
+
+`resources/ui-v1/vi.json` và `en.json` là dữ liệu chữ giao diện, hướng dẫn và danh
+mục tên ngôn ngữ. Phím tắt không mang sẵn cả hai từ điển; chỉ giữ vài câu Việt/Anh
+ngắn để chọn ngôn ngữ và báo lỗi khi chưa có gói. Không đưa API key, bản gốc,
+bản dịch hoặc đường dẫn iCloud cá nhân lên repo.
+
+Mỗi gói là một JSON phẳng gồm chuỗi và metadata cố định. Ba danh mục ngôn ngữ
+cũng là chuỗi JSON phẳng. Kiểm tra cú pháp trước khi giải mã, mã sản phẩm, schema,
+phiên bản gói, locale, số trường, tập tên trường và đủ 20 ngôn ngữ. Gói sai, thiếu,
+rỗng, HTML hoặc JSON hỏng không được dùng để ghi cấu hình giao diện mới.
+
+Lần tải đầu: kiểm tra dữ liệu → tệp pending → đọc/kiểm tra → tệp chính → đọc/kiểm
+tra → bản dự phòng. Các mã TA301/TA302 chỉ lỗi kiểm tra gói đã ghi. Bản chính hỏng
+có thể dùng bản dự phòng; nếu cả hai chưa dùng được, tải lại đúng ngôn ngữ. Lỗi
+mạng trong tác vụ iOS có thể kết thúc phiên, nhưng không đổi cấu hình/key/bản dịch
+đang có. Đổi giao diện chỉ ghi cấu hình sau khi gói mới đã dùng được.
+
+Không có code từ xa, endpoint API hoặc prompt điều khiển trong gói. Đường dẫn
+GET chỉ nhận hai locale vi/en trên repo chính thức. Nút mở web chỉ mở trang API
+DeepSeek đã cố định và chỉ chạy từ nhánh hướng dẫn do người dùng chọn.
 
 ## Source and checks
 
@@ -141,5 +184,7 @@ match the inspected source. Signing uploads only public generated source to
 Shortcuty's documented signing service, never user text or credentials.
 
 Reports under `qa/` record host checks separately from actual iPhone acceptance.
-Beta1 still needs confirmation on the owner's iPhone for native UI, OCR quality,
-provider interaction and timing. No claim of error-free device execution is made.
+The owner confirmed beta1 works and supplied screenshots of OCR review and
+Vietnamese/Japanese translations. Beta2 is checked with simulated native I/O;
+its changed UI and first-download permissions have not yet been observed on the
+owner's iPhone. Host checks do not establish error-free device execution.

@@ -1,17 +1,21 @@
 {
   "balancedControlFlow": true,
   "uniqueUUIDs": true,
-  "validUTF16Spans": 1031,
+  "validUTF16Spans": 1184,
   "forwardReferencesAbsent": true,
   "nativeIdentifiers": 44,
   "singlePinnedDeepSeekPOST": true,
+  "singleSelectedLocaleGET": true,
+  "UIResourcesNotEmbedded": true,
+  "noNativeAlertActions": true,
+  "onlyUserRequestedOfficialAPIPageOpens": true,
   "nativeJSONRequestShapeVerified": true,
   "personalBookmarksRemoved": true,
   "noEmbeddedCredential": true,
   "clipboardWriteRequiresResultMenu": true,
-  "actions": 2404,
+  "actions": 2730,
   "nativeDeviceVerified": false,
   "signedActionGraphEqual": true,
-  "signedBytes": 174355,
-  "signedSHA256": "cc74a72e5141b883ab219f5d7d0551246eb7b87597dccc03e7404388e8d403cf"
+  "signedBytes": 179790,
+  "signedSHA256": "ad0e0779f7065e21f8eb794ac9ad53e8ab7980ddfde42b73810682cdb99f0258"
 }

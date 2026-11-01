@@ -1,19 +1,470 @@
-"""Build-time resource catalog; no downloaded executable code."""
+"""Build the versioned, data-only interface packs served by GitHub."""
 import json
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
-VI={
-'main':'Chọn nội dung cần dịch','clipboard':'Dán từ clipboard','manual':'Nhập văn bản','photos':'Ảnh / ảnh chụp màn hình','camera':'Chụp ảnh','files':'Chọn ảnh từ Files','history':'Bản dịch đã lưu','settings':'Cài đặt','back':'Quay lại','cancel':'Kết thúc','sourcePick':'Nội dung này là ảnh hay văn bản?','asImage':'Bóc chữ từ ảnh','asText':'Dùng như văn bản','skip':'Bỏ qua mục này','enterText':'Nhập hoặc sửa nội dung cần dịch','empty':'Không có chữ để dịch. Bạn có thể nhập tay hoặc chọn ảnh khác.','review':'Kiểm tra và sửa chữ nhận từ ảnh trước khi dịch. Nếu ảnh không ra chữ, bạn có thể nhập nội dung tại đây.','tooLong':'Nội dung dài hơn 18.000 ký tự. Hãy chọn một phần nhỏ hơn để dịch.','target':'Ngôn ngữ muốn dịch sang','source':'Ngôn ngữ gốc','auto':'Tự nhận diện','ui':'Ngôn ngữ giao diện','style':'Cách dịch','faithful':'Dịch sát nghĩa','natural':'Diễn đạt tự nhiên, giữ đúng ý','key':'API key DeepSeek','enterKey':'Nhập API key','keyFile':'Nhập key từ tệp TXT','keyPrompt':'Dán API key DeepSeek của bạn. Khoá chỉ dùng trong phiên trừ khi bạn chọn ghi nhớ.','badKey':'Khoá đang trống hoặc có ký tự không phù hợp. Bạn hãy nhập lại.','keyStorage':'Chọn cách giữ API key. Ghi nhớ trên iCloud tạo tệp TXT đọc được trong Files; đây không phải kho Keychain.','session':'Chỉ dùng trong phiên này','remember':'Ghi nhớ trên iCloud (tệp TXT)','forget':'Xoá key đã ghi nhớ','forgetConfirm':'Xoá tệp key của bản mới trên iCloud? Tệp APIkeyDeepseek.txt cũ không bị thay đổi.','confirm':'Xác nhận','keyForgot':'Đã ngừng ghi nhớ key. Nếu bạn huỷ hộp thoại xoá của Files, tệp vẫn có thể còn đó nhưng phím tắt không đọc lại.','configured':'Đã lưu cài đặt.','configRecovered':'Cấu hình lỗi; đã dùng bản lưu trước.','configReset':'Chưa đọc được cấu hình. Bạn hãy chọn lại giao diện và ngôn ngữ đích. Bản dịch đã lưu vẫn được giữ.','saveFailed':'Chưa xác minh được tệp vừa lưu. Bạn hãy giữ nguyên dữ liệu và chạy lại.','keyNeeded':'Bạn cần API key riêng cho bản dịch mới. OCR và bản dịch đã lưu không cần key.','sameLanguage':'Ngôn ngữ gốc và đích đang giống nhau. Bạn hãy chọn lại ngôn ngữ đích.','savedHit':'Đang dùng bản dịch đã lưu, không gọi AI.','translate':'Dịch','newTranslation':'Dịch nội dung mới','otherTarget':'Dịch sang ngôn ngữ khác','editText':'Sửa nội dung gốc','view':'Xem bản dịch','bilingual':'Xem bản song ngữ','copy':'Sao chép bản dịch','copied':'Đã sao chép bản dịch.','speak':'Đọc bản dịch','save':'Lưu bản dịch','saved':'Đã lưu bản dịch.','alreadySaved':'Bản dịch này đã được lưu.','replaceSave':'Đã có bản lưu cho cùng nội dung và thiết lập. Bạn có muốn thay bản lưu đó bằng kết quả mới?','replace':'Thay bản lưu','retryFresh':'Dịch lại bằng AI','retry':'Thử lại phần chưa xong','partial':'Xem phần đã dịch','apiFailure':'Chưa nhận được bản dịch hoàn chỉnh. Nội dung và các phần đã dịch vẫn còn trong phiên này.','apiAuth':'API key không dùng được. Bạn hãy nhập lại key rồi thử tiếp.','apiBalance':'Tài khoản DeepSeek không đủ số dư. Bạn có thể quay lại sau khi bổ sung số dư.','apiBusy':'Dịch vụ đang quá tải hoặc giới hạn yêu cầu. Bạn hãy chờ rồi chọn thử lại.','apiLength':'Kết quả bị cắt giữa chừng. Hãy rút ngắn nội dung hoặc chia nhỏ hơn trước khi dịch lại.','apiFormat':'Dịch vụ trả dữ liệu chưa đúng định dạng hoặc không có bản dịch.','search':'Tìm bản dịch đã lưu','query':'Nhập từ cần tìm trong bản gốc hoặc bản dịch. Để trống để xem tất cả.','noHistory':'Chưa tìm thấy bản dịch hợp lệ. Tệp chưa tải về từ iCloud cũng có thể chưa đọc được.','recordGone':'Chưa đọc được bản lưu này. Bạn hãy chờ iCloud tải xong rồi thử lại.','export':'Xuất bản song ngữ TXT','info':'Info và hướng dẫn','original':'Bản gốc','translation':'Bản dịch','fromSaved':'BẢN ĐÃ LƯU','fromAI':'BẢN DỊCH AI','progress':'Đang dịch các phần của văn bản','chars':'ký tự','infoBody':'DỊCH THUẬT AI 2.0 · © Sentechtipsvn\n\nChia sẻ chữ hoặc ảnh vào phím tắt để dịch. Mở trực tiếp để nhập chữ, dán clipboard, chọn ảnh/ảnh chụp màn hình, Files hoặc camera. Ảnh được bóc chữ trên thiết bị; bạn có thể sửa trước khi gửi phần chữ cho DeepSeek.\n\nTrong Cài đặt, chọn ngôn ngữ gốc, đích, cách dịch và giao diện Việt/Anh. Có 20 lựa chọn ngôn ngữ đích. Khả năng OCR phụ thuộc ảnh, ngôn ngữ và iOS.\n\nBản dịch mới cần mạng và API key DeepSeek riêng; dịch vụ có thể tính phí theo tài khoản của bạn. Mặc định key chỉ giữ trong phiên. Ghi nhớ key là tuỳ chọn lưu TXT đọc được trên iCloud, không phải mã hoá riêng hoặc Keychain. Không có key nào được gắn sẵn vào bản chia sẻ.\n\nChỉ chọn Lưu thì nội dung mới được ghi vào iCloud Drive/Shortcuts/TranslateAI. Bản đã lưu có thể tìm lại và dùng lại khi tệp đã có trên máy; muốn kết quả mới, chọn Dịch lại bằng AI. Clipboard chỉ thay đổi khi bạn chọn Sao chép. Không lưu ảnh gốc.\n\nBản dịch được chia theo đoạn khi dài. Phản hồi rỗng hoặc chưa đầy đủ không được lưu như hoàn tất. Nếu mạng lỗi khiến iOS dừng tác vụ, bạn cần chạy lại với nội dung gốc; bản đang làm chưa lưu sẽ không tự phục hồi sau khi kết thúc phiên.\n\nBạn nên đọc lại tên riêng, số liệu và phần OCR trước khi sử dụng. Các nút Quay lại giữ đúng màn hình trước; huỷ hộp thoại hệ thống sẽ kết thúc phiên.'}
-EN={
-'main':'Choose content to translate','clipboard':'Paste from clipboard','manual':'Enter text','photos':'Photos / screenshots','camera':'Take a photo','files':'Choose an image from Files','history':'Saved translations','settings':'Settings','back':'Back','cancel':'Finish','sourcePick':'Is this content an image or text?','asImage':'Extract text from image','asText':'Use as text','skip':'Skip this item','enterText':'Enter or edit text to translate','empty':'No text to translate. Enter text or choose another image.','review':'Review and correct the text extracted from your images. If no text was found, you can enter it here.','tooLong':'The text exceeds 18,000 characters. Select a smaller section to translate.','target':'Translate into','source':'Source language','auto':'Detect automatically','ui':'Interface language','style':'Translation style','faithful':'Faithful translation','natural':'Natural wording, same meaning','key':'DeepSeek API key','enterKey':'Enter API key','keyFile':'Import key from TXT file','keyPrompt':'Paste your DeepSeek API key. It stays in this session unless you choose to remember it.','badKey':'The key is empty or contains unsupported characters. Please enter it again.','keyStorage':'Choose how to keep your API key. Remembering it creates a readable TXT file in iCloud Files; this is not Keychain storage.','session':'Use only in this session','remember':'Remember in iCloud (TXT file)','forget':'Remove remembered key','forgetConfirm':'Remove the new shortcut’s key file from iCloud? Your old APIkeyDeepseek.txt is not changed.','confirm':'Confirm','keyForgot':'The shortcut will no longer remember this key. If you cancel the Files deletion prompt, the file may remain, but the shortcut will not read it again.','configured':'Settings saved.','configRecovered':'Settings were damaged; the previous save was loaded.','configReset':'Settings could not be read. Choose your interface and target language again. Saved translations are kept.','saveFailed':'The saved file could not be verified. Keep your data and run the shortcut again.','keyNeeded':'New translations need your own API key. OCR and saved translations do not.','sameLanguage':'The source and target languages are the same. Choose a different target.','savedHit':'Using a saved translation without calling AI.','translate':'Translate','newTranslation':'Translate new content','otherTarget':'Translate into another language','editText':'Edit original text','view':'View translation','bilingual':'View original and translation','copy':'Copy translation','copied':'Translation copied.','speak':'Read translation aloud','save':'Save translation','saved':'Translation saved.','alreadySaved':'This translation is already saved.','replaceSave':'A translation already exists for this content and settings. Replace it with this new result?','replace':'Replace saved translation','retryFresh':'Translate again with AI','retry':'Retry the unfinished part','partial':'View completed parts','apiFailure':'No complete translation was received. Your text and completed parts are still available in this session.','apiAuth':'The API key was rejected. Enter a key again before retrying.','apiBalance':'Your DeepSeek account has insufficient balance. You can return after adding funds.','apiBusy':'The service is busy or rate-limited. Wait before choosing Retry.','apiLength':'The response was cut short. Shorten the input or split it further before retrying.','apiFormat':'The service returned an unexpected response or no translation.','search':'Search saved translations','query':'Search the original or translated text. Leave blank to show all.','noHistory':'No valid saved translations found. Files not yet downloaded from iCloud may also be unavailable.','recordGone':'This saved translation is unavailable. Wait for iCloud to download it and try again.','export':'Export bilingual TXT','info':'Info and help','original':'Original','translation':'Translation','fromSaved':'SAVED TRANSLATION','fromAI':'AI TRANSLATION','progress':'Translating text sections','chars':'characters','infoBody':'TRANSLATE AI 2.0 · © Sentechtipsvn\n\nShare text or images to the shortcut. Run it directly to enter text, paste the clipboard, select photos/screenshots, use Files or take a photo. Images are processed with on-device OCR; review the extracted text before sending text to DeepSeek.\n\nSettings include source and target languages, faithful/natural wording, and Vietnamese/English interface. There are 20 target language choices. OCR support depends on the image, language and iOS.\n\nNew translations need internet and your own DeepSeek API key. Your provider account may be billed. Keys stay in the session by default. Remembering a key is optional readable iCloud TXT storage, not separate encryption or Keychain. No personal key is bundled.\n\nContent is written to iCloud Drive/Shortcuts/TranslateAI only when you choose Save. Saved translations can be searched and reused once their files are available locally; choose Translate again with AI for a fresh result. The clipboard changes only when you choose Copy. Original images are not stored.\n\nLong text is split into sections. Empty or incomplete responses cannot be saved as complete. If iOS stops a network action, run again with the original input; unsaved work does not automatically survive the end of a session.\n\nReview names, numbers and OCR before use. Back buttons return to the previous screen; cancelling a system prompt ends the session.'}
-VI['tooMany']='Mỗi lần tối đa 10 mục. Bạn hãy chọn ít ảnh hoặc ít đoạn hơn.'
-EN['tooMany']='Choose at most 10 items per run. Select fewer images or text items.'
-VI['infoBody']+='\n\nBản dịch lưu dạng JSON đọc được, chưa mã hoá riêng bằng mật khẩu. iCloud bảo vệ theo cấu hình tài khoản của bạn. Đọc thành tiếng cần giọng tương ứng trên thiết bị.'
-EN['infoBody']+='\n\nSaved translations are readable JSON, without separate password encryption. iCloud protection follows your account settings. Read-aloud requires a matching voice on the device.'
-VI['infoBody']+='\n\nTạo API key trong tài khoản của bạn tại https://platform.deepseek.com/. Vào Cài đặt → API key để nhập key hoặc chọn tệp TXT cũ.'
-EN['infoBody']+='\n\nCreate an API key in your own account at https://platform.deepseek.com/. Open Settings → API key to enter it or select an old TXT key file.'
-assert set(VI)==set(EN)
-LANGS=[('vi','Tiếng Việt','Vietnamese'),('en','English','English'),('en-GB','English (UK)','British English'),('ja','日本語','Japanese'),('ko','한국어','Korean'),('zh-Hans','简体中文','Simplified Chinese'),('zh-Hant','繁體中文','Traditional Chinese'),('fr','Français','French'),('de','Deutsch','German'),('ru','Русский','Russian'),('es','Español','Spanish'),('th','ไทย','Thai'),('id','Bahasa Indonesia','Indonesian'),('tr','Türkçe','Turkish'),('it','Italiano','Italian'),('pt-BR','Português (Brasil)','Brazilian Portuguese'),('hi','हिन्दी','Hindi'),('ar','العربية','Arabic'),('nl','Nederlands','Dutch'),('pl','Polski','Polish')]
-(ROOT/'strings.json').write_text(json.dumps({'vi':VI,'en':EN},ensure_ascii=False,indent=2)+'\n')
-SPEECH={'vi': 'vi-VN', 'en': 'en-US', 'en-GB': 'en-GB', 'ja': 'ja-JP', 'ko': 'ko-KR', 'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW', 'fr': 'fr-FR', 'de': 'de-DE', 'ru': 'ru-RU', 'es': 'es-ES', 'th': 'th-TH', 'id': 'id-ID', 'tr': 'tr-TR', 'it': 'it-IT', 'pt-BR': 'pt-BR', 'hi': 'hi-IN', 'ar': 'ar-SA', 'nl': 'nl-NL', 'pl': 'pl-PL'}
-(ROOT/'languages.json').write_text(json.dumps({code:{'name':name,'english':eng,'speech':SPEECH[code]} for code,name,eng in LANGS},ensure_ascii=False,indent=2)+'\n')
+PACK_VERSION="1"
+STRINGS={'vi': {'main': 'Chọn nội dung cần dịch',
+        'clipboard': 'Dán từ clipboard',
+        'manual': 'Nhập văn bản',
+        'photos': 'Ảnh / ảnh chụp màn hình',
+        'camera': 'Chụp ảnh',
+        'files': 'Chọn ảnh từ Files',
+        'history': 'Bản dịch đã lưu',
+        'settings': 'Cài đặt',
+        'back': 'Quay lại',
+        'cancel': 'Kết thúc',
+        'sourcePick': 'Nội dung này là ảnh hay văn bản?',
+        'asImage': 'Bóc chữ từ ảnh',
+        'asText': 'Dùng như văn bản',
+        'skip': 'Bỏ qua mục này',
+        'enterText': 'Nhập hoặc sửa nội dung cần dịch',
+        'empty': 'Không có chữ để dịch. Bạn có thể nhập tay hoặc chọn ảnh khác.',
+        'review': 'Kiểm tra và sửa chữ nhận từ ảnh trước khi dịch. Nếu ảnh không ra chữ, bạn có thể nhập nội '
+                  'dung tại đây.',
+        'tooLong': 'Nội dung dài hơn 18.000 ký tự. Hãy chọn một phần nhỏ hơn để dịch.',
+        'target': 'Ngôn ngữ muốn dịch sang',
+        'source': 'Ngôn ngữ gốc',
+        'auto': 'Tự nhận diện',
+        'ui': 'Ngôn ngữ giao diện',
+        'style': 'Cách dịch',
+        'faithful': 'Dịch sát nghĩa',
+        'natural': 'Diễn đạt tự nhiên, giữ đúng ý',
+        'key': 'API key DeepSeek',
+        'enterKey': 'Nhập API key',
+        'keyFile': 'Nhập key từ tệp TXT',
+        'keyPrompt': 'Dán API key DeepSeek của bạn. Khoá chỉ dùng trong phiên trừ khi bạn chọn ghi nhớ.',
+        'badKey': 'Khoá đang trống hoặc có ký tự không phù hợp. Bạn hãy nhập lại.',
+        'keyStorage': 'Chọn cách giữ API key. Ghi nhớ trên iCloud tạo tệp TXT đọc được trong Files; đây '
+                      'không phải kho Keychain.',
+        'session': 'Chỉ dùng trong phiên này',
+        'remember': 'Ghi nhớ trên iCloud (tệp TXT)',
+        'forget': 'Xoá key đã ghi nhớ',
+        'forgetConfirm': 'Xoá tệp key của bản mới trên iCloud? Tệp APIkeyDeepseek.txt cũ không bị thay đổi.',
+        'confirm': 'Xác nhận',
+        'keyForgot': 'Đã ngừng ghi nhớ key. Nếu bạn huỷ hộp thoại xoá của Files, tệp vẫn có thể còn đó nhưng '
+                     'phím tắt không đọc lại.',
+        'configured': 'Đã lưu cài đặt.',
+        'configRecovered': 'Cấu hình lỗi; đã dùng bản lưu trước.',
+        'configReset': 'Chưa đọc được cấu hình. Bạn hãy chọn lại giao diện và ngôn ngữ đích. Bản dịch đã lưu '
+                       'vẫn được giữ.',
+        'saveFailed': 'Chưa xác minh được tệp vừa lưu. Bạn hãy giữ nguyên dữ liệu và chạy lại.',
+        'keyNeeded': 'Bạn cần API key riêng cho bản dịch mới. OCR và bản dịch đã lưu không cần key.',
+        'sameLanguage': 'Ngôn ngữ gốc và đích đang giống nhau. Bạn hãy chọn lại ngôn ngữ đích.',
+        'savedHit': 'Đang dùng bản dịch đã lưu, không gọi AI.',
+        'translate': 'Dịch',
+        'newTranslation': 'Dịch nội dung mới',
+        'otherTarget': 'Dịch sang ngôn ngữ khác',
+        'editText': 'Sửa nội dung gốc',
+        'view': 'Xem bản dịch',
+        'bilingual': 'Xem bản song ngữ',
+        'copy': 'Sao chép bản dịch',
+        'copied': 'Đã sao chép bản dịch.',
+        'speak': 'Đọc bản dịch',
+        'save': 'Lưu bản dịch',
+        'saved': 'Đã lưu bản dịch.',
+        'alreadySaved': 'Bản dịch này đã được lưu.',
+        'replaceSave': 'Đã có bản lưu cho cùng nội dung và thiết lập. Bạn có muốn thay bản lưu đó bằng kết '
+                       'quả mới?',
+        'replace': 'Thay bản lưu',
+        'retryFresh': 'Dịch lại bằng AI',
+        'retry': 'Thử lại phần chưa xong',
+        'partial': 'Xem phần đã dịch',
+        'apiFailure': 'Chưa nhận được bản dịch hoàn chỉnh. Nội dung và các phần đã dịch vẫn còn trong phiên '
+                      'này.',
+        'apiAuth': 'API key không dùng được. Bạn hãy nhập lại key rồi thử tiếp.',
+        'apiBalance': 'Tài khoản DeepSeek không đủ số dư. Bạn có thể quay lại sau khi bổ sung số dư.',
+        'apiBusy': 'Dịch vụ đang quá tải hoặc giới hạn yêu cầu. Bạn hãy chờ rồi chọn thử lại.',
+        'apiLength': 'Kết quả bị cắt giữa chừng. Hãy rút ngắn nội dung hoặc chia nhỏ hơn trước khi dịch lại.',
+        'apiFormat': 'Dịch vụ trả dữ liệu chưa đúng định dạng hoặc không có bản dịch.',
+        'search': 'Tìm bản dịch đã lưu',
+        'query': 'Nhập từ cần tìm trong bản gốc hoặc bản dịch. Để trống để xem tất cả.',
+        'noHistory': 'Chưa tìm thấy bản dịch hợp lệ. Tệp chưa tải về từ iCloud cũng có thể chưa đọc được.',
+        'recordGone': 'Chưa đọc được bản lưu này. Bạn hãy chờ iCloud tải xong rồi thử lại.',
+        'export': 'Xuất bản song ngữ TXT',
+        'info': 'Info và hướng dẫn',
+        'original': 'Bản gốc',
+        'translation': 'Bản dịch',
+        'fromSaved': 'BẢN ĐÃ LƯU',
+        'fromAI': 'BẢN DỊCH AI',
+        'progress': 'Đang dịch các phần của văn bản',
+        'chars': 'ký tự',
+        'tooMany': 'Mỗi lần tối đa 10 mục. Bạn hãy chọn ít ảnh hoặc ít đoạn hơn.',
+        'title': 'Dịch thuật AI · © Sentechtipsvn',
+        'about': 'Thông tin phím tắt',
+        'help': 'Hướng dẫn sử dụng',
+        'helpAPI': 'Lấy API key DeepSeek',
+        'helpText': 'Dịch văn bản và chia sẻ',
+        'helpImages': 'Dịch ảnh / ảnh chụp màn hình',
+        'helpLanguages': 'Ngôn ngữ và cách dịch',
+        'helpLibrary': 'Lưu và tìm lại bản dịch',
+        'helpPrivacy': 'API key, dữ liệu và xử lý lỗi',
+        'openAPI': 'Mở trang lấy API DeepSeek',
+        'apiOptions': 'Bạn muốn làm gì tiếp?',
+        'keyStorageTitle': 'Cách giữ API key',
+        'uiRecovered': 'Gói giao diện chính chưa đọc được; đang dùng bản dự phòng đã lưu trên iCloud.',
+        'aboutBody': 'DỊCH THUẬT AI\n'
+                     '© Sentechtipsvn\n'
+                     '\n'
+                     'Dịch văn bản và chữ trong ảnh bằng DeepSeek. Nhận nội dung từ bảng Chia sẻ, clipboard, '
+                     'ảnh chụp màn hình, camera hoặc Files.\n'
+                     '\n'
+                     'Bóc chữ trên thiết bị và cho sửa trước khi dịch. Có 20 lựa chọn ngôn ngữ đích, dịch '
+                     'sát nghĩa hoặc diễn đạt tự nhiên. Xem song ngữ, sao chép, nghe, xuất TXT và lưu bản '
+                     'dịch vào iCloud để tìm lại.\n'
+                     '\n'
+                     'Bản dịch mới cần mạng, tài khoản DeepSeek và API key riêng. Vào Hướng dẫn sử dụng để '
+                     'xem cách thiết lập.',
+        'guideAPI': 'LẤY API KEY DEEPSEEK\n'
+                    '\n'
+                    '1. Bạn cần có tài khoản DeepSeek riêng. Bấm Mở trang lấy API DeepSeek ở màn hình tiếp '
+                    'theo để vào trang chính thức; đăng nhập hoặc đăng ký.\n'
+                    '\n'
+                    '2. Tại DeepSeek Platform, mở API keys → Create new API key. Đặt tên dễ nhớ, tạo key rồi '
+                    'sao chép ngay. Đừng gửi key lên nhóm hoặc đưa vào bản phím tắt chia sẻ.\n'
+                    '\n'
+                    '3. Dịch vụ API CÓ TÍNH PHÍ theo lượng chữ xử lý (token đầu vào và đầu ra). Dịch đoạn '
+                    'ngắn thường có chi phí thấp, nhưng không miễn phí và không có mức phí cố định cho mọi '
+                    'lần dịch. Kiểm tra mục số dư / Top up và bảng giá hiện hành trước khi dùng; cần có số '
+                    'dư API đủ dùng.\n'
+                    '\n'
+                    '4. Quay về phím tắt → Cài đặt → API key DeepSeek → Nhập API key. Dán key và chọn Chỉ '
+                    'dùng trong phiên này hoặc tự chọn Ghi nhớ trên iCloud. Bạn cũng có thể nhập từ tệp TXT '
+                    'của mình.\n'
+                    '\n'
+                    '5. Thử với một câu ngắn. Nếu báo key không dùng được, kiểm tra key; nếu báo không đủ số '
+                    'dư, bổ sung số dư trên DeepSeek Platform. Bảng giá chính thức: '
+                    'https://api-docs.deepseek.com/quick_start/pricing/',
+        'guideText': 'DỊCH VĂN BẢN\n'
+                     '\n'
+                     '• Từ ứng dụng khác: chọn chữ → Chia sẻ → Dịch thuật AI. Nội dung được chuyển thẳng tới '
+                     'luồng dịch với thiết lập đã ghi nhớ.\n'
+                     '• Mở phím tắt trực tiếp: chọn Nhập văn bản hoặc Dán từ clipboard. Phím tắt chỉ đọc '
+                     'clipboard khi bạn chọn mục đó.\n'
+                     '• Chọn ngôn ngữ đích trong Cài đặt trước khi dịch. Ngôn ngữ gốc mặc định tự nhận '
+                     'diện.\n'
+                     '• Sau khi dịch: xem bản dịch / song ngữ, sao chép, đọc thành tiếng, lưu hoặc xuất TXT. '
+                     'Muốn sửa đầu vào, chọn Sửa nội dung gốc.\n'
+                     '• Dịch sang ngôn ngữ khác dùng lại bản gốc, không dịch vòng qua kết quả cũ. Dịch lại '
+                     'bằng AI tạo yêu cầu mới và có thể tính phí.\n'
+                     '\n'
+                     'Tối đa 18.000 ký tự mỗi lượt. Chữ dài được chia phần; bạn có thể thử tiếp phần chưa '
+                     'xong nếu dịch vụ trả lỗi mà phiên vẫn đang chạy.',
+        'guideImages': 'DỊCH ẢNH VÀ ẢNH CHỤP MÀN HÌNH\n'
+                       '\n'
+                       '1. Chia sẻ ảnh vào phím tắt, hoặc chọn Ảnh / ảnh chụp màn hình, Chụp ảnh hay Chọn '
+                       'ảnh từ Files. Mỗi lượt tối đa 10 mục.\n'
+                       '2. Phím tắt bóc chữ trên thiết bị. Kiểm tra và sửa chữ nhận được, nhất là tên riêng, '
+                       'số, dấu và thứ tự dòng. Nếu ảnh không ra chữ, bạn có thể nhập tay tại màn hình này.\n'
+                       '3. Bấm Xong để gửi phần chữ đã sửa cho DeepSeek và nhận bản dịch. Ảnh gốc không được '
+                       'gửi tới DeepSeek hoặc lưu vào thư viện bản dịch.\n'
+                       '\n'
+                       'Ảnh rõ chữ, đủ sáng và ít nghiêng sẽ dễ đọc hơn. Nhận chữ phụ thuộc ngôn ngữ và iOS; '
+                       'chữ viết tay hoặc bố cục nhiều cột có thể sai. Chọn ít ảnh hơn nếu xử lý chậm. Huỷ '
+                       'hộp thoại hệ thống sẽ kết thúc phiên.',
+        'guideLanguages': 'NGÔN NGỮ VÀ CÁCH DỊCH\n'
+                          '\n'
+                          'Cài đặt → Ngôn ngữ muốn dịch sang: chọn một trong 20 ngôn ngữ và ghi nhớ cho các '
+                          'lần sau. Ngôn ngữ gốc có thể để Tự nhận diện hoặc chọn cố định.\n'
+                          '\n'
+                          'Cách dịch gồm Dịch sát nghĩa và Diễn đạt tự nhiên, giữ đúng ý. Hướng dẫn cho AI '
+                          'yêu cầu giữ tên riêng, số liệu, tiền tệ, URL, mã và xuống dòng. Bạn vẫn nên đọc '
+                          'lại kết quả. Đọc thành tiếng cần giọng tương ứng trên thiết bị.\n'
+                          '\n'
+                          'Ngôn ngữ giao diện tách riêng với ngôn ngữ dịch. Lần đầu chọn Việt hoặc Anh, phím '
+                          'tắt chỉ tải gói JSON của giao diện đã chọn từ GitHub về iCloud. Các lần sau dùng '
+                          'gói đã lưu, không tải lại mỗi lần chạy. Đổi giao diện cần mạng nếu chưa có gói '
+                          'đó; gói lỗi có thể dùng bản dự phòng.\n'
+                          '\n'
+                          'Bản dịch đã lưu có thể xem ngoại tuyến sau khi gói giao diện và các tệp iCloud đã '
+                          'tải về máy.',
+        'guideLibrary': 'LƯU VÀ DÙNG LẠI BẢN DỊCH\n'
+                        '\n'
+                        '• Chọn Lưu bản dịch sau khi dịch xong để ghi vào iCloud '
+                        'Drive/Shortcuts/TranslateAI/records. Không chọn Lưu thì nội dung dịch chỉ ở trong '
+                        'phiên.\n'
+                        '• Mở Bản dịch đã lưu để tìm trong cả bản gốc và bản dịch. Để trống ô tìm kiếm để '
+                        'xem tất cả.\n'
+                        '• Nội dung và thiết lập giống một bản đã lưu sẽ dùng lại bản đó trước khi đọc key '
+                        'hoặc gọi AI. Màn hình ghi BẢN ĐÃ LƯU.\n'
+                        '• Muốn kết quả mới, chọn Dịch lại bằng AI. Thay bản lưu cũ cần xác nhận; bản trước '
+                        'được giữ trong backups.\n'
+                        '• Xuất bản song ngữ TXT để tự chọn nơi lưu hoặc chia sẻ.\n'
+                        '\n'
+                        'Tệp lưu là JSON đọc được, chứa bản gốc, bản dịch, ngôn ngữ, cách dịch và thời gian. '
+                        'Không có ảnh gốc hoặc API key trong bản dịch. Chờ iCloud tải đủ tệp nếu chưa thấy '
+                        'bản đã lưu. Nâng cấp từ bản trước vẫn giữ cài đặt, key đã chọn ghi nhớ và thư viện '
+                        'hiện có.',
+        'guidePrivacy': 'API KEY, DỮ LIỆU VÀ XỬ LÝ LỖI\n'
+                        '\n'
+                        'Key mặc định chỉ giữ trong phiên. Ghi nhớ trên iCloud là lựa chọn riêng, tạo tệp '
+                        'key.txt đọc được trong Files; chưa có mã hoá bằng mật khẩu hoặc Keychain riêng. '
+                        'Không chia sẻ tệp key này. Xoá key đã ghi nhớ sẽ tắt đọc lại rồi yêu cầu Files xoá '
+                        'tệp.\n'
+                        '\n'
+                        'Cấu hình, gói giao diện và bản dịch lưu ở iCloud Drive/Shortcuts/TranslateAI. Bản '
+                        'dịch JSON cũng đọc được; bảo vệ iCloud phụ thuộc cấu hình tài khoản của bạn. Không '
+                        'đưa key hoặc nội dung dịch lên GitHub. GitHub chỉ cung cấp gói chữ giao diện; chỉ '
+                        'phần chữ cần dịch được gửi tới DeepSeek.\n'
+                        '\n'
+                        'Lỗi key: nhập lại key đúng. Không đủ số dư: kiểm tra tài khoản DeepSeek. Quá tải / '
+                        'giới hạn: chờ rồi thử tiếp phần chưa xong. Kết quả rỗng hoặc bị cắt không được đánh '
+                        'dấu là bản dịch hoàn tất.\n'
+                        '\n'
+                        'Nếu iOS dừng tác vụ vì mất mạng, SSL hoặc quyền truy cập, hãy chạy lại với nội dung '
+                        'gốc. Nội dung chưa lưu không tự phục hồi sau khi phiên kết thúc. Máy chủ có thể đã '
+                        'xử lý yêu cầu trước khi mất kết nối; chạy lại có thể phát sinh phí.\n'
+                        '\n'
+                        'Huỷ hộp thoại hệ thống kết thúc phiên; dùng nút Quay lại trong menu để trở về màn '
+                        'hình trước.'},
+ 'en': {'main': 'Choose content to translate',
+        'clipboard': 'Paste from clipboard',
+        'manual': 'Enter text',
+        'photos': 'Photos / screenshots',
+        'camera': 'Take a photo',
+        'files': 'Choose an image from Files',
+        'history': 'Saved translations',
+        'settings': 'Settings',
+        'back': 'Back',
+        'cancel': 'Finish',
+        'sourcePick': 'Is this content an image or text?',
+        'asImage': 'Extract text from image',
+        'asText': 'Use as text',
+        'skip': 'Skip this item',
+        'enterText': 'Enter or edit text to translate',
+        'empty': 'No text to translate. Enter text or choose another image.',
+        'review': 'Review and correct the text extracted from your images. If no text was found, you can '
+                  'enter it here.',
+        'tooLong': 'The text exceeds 18,000 characters. Select a smaller section to translate.',
+        'target': 'Translate into',
+        'source': 'Source language',
+        'auto': 'Detect automatically',
+        'ui': 'Interface language',
+        'style': 'Translation style',
+        'faithful': 'Faithful translation',
+        'natural': 'Natural wording, same meaning',
+        'key': 'DeepSeek API key',
+        'enterKey': 'Enter API key',
+        'keyFile': 'Import key from TXT file',
+        'keyPrompt': 'Paste your DeepSeek API key. It stays in this session unless you choose to remember '
+                     'it.',
+        'badKey': 'The key is empty or contains unsupported characters. Please enter it again.',
+        'keyStorage': 'Choose how to keep your API key. Remembering it creates a readable TXT file in iCloud '
+                      'Files; this is not Keychain storage.',
+        'session': 'Use only in this session',
+        'remember': 'Remember in iCloud (TXT file)',
+        'forget': 'Remove remembered key',
+        'forgetConfirm': 'Remove the new shortcut’s key file from iCloud? Your old APIkeyDeepseek.txt is not '
+                         'changed.',
+        'confirm': 'Confirm',
+        'keyForgot': 'The shortcut will no longer remember this key. If you cancel the Files deletion '
+                     'prompt, the file may remain, but the shortcut will not read it again.',
+        'configured': 'Settings saved.',
+        'configRecovered': 'Settings were damaged; the previous save was loaded.',
+        'configReset': 'Settings could not be read. Choose your interface and target language again. Saved '
+                       'translations are kept.',
+        'saveFailed': 'The saved file could not be verified. Keep your data and run the shortcut again.',
+        'keyNeeded': 'New translations need your own API key. OCR and saved translations do not.',
+        'sameLanguage': 'The source and target languages are the same. Choose a different target.',
+        'savedHit': 'Using a saved translation without calling AI.',
+        'translate': 'Translate',
+        'newTranslation': 'Translate new content',
+        'otherTarget': 'Translate into another language',
+        'editText': 'Edit original text',
+        'view': 'View translation',
+        'bilingual': 'View original and translation',
+        'copy': 'Copy translation',
+        'copied': 'Translation copied.',
+        'speak': 'Read translation aloud',
+        'save': 'Save translation',
+        'saved': 'Translation saved.',
+        'alreadySaved': 'This translation is already saved.',
+        'replaceSave': 'A translation already exists for this content and settings. Replace it with this new '
+                       'result?',
+        'replace': 'Replace saved translation',
+        'retryFresh': 'Translate again with AI',
+        'retry': 'Retry the unfinished part',
+        'partial': 'View completed parts',
+        'apiFailure': 'No complete translation was received. Your text and completed parts are still '
+                      'available in this session.',
+        'apiAuth': 'The API key was rejected. Enter a key again before retrying.',
+        'apiBalance': 'Your DeepSeek account has insufficient balance. You can return after adding funds.',
+        'apiBusy': 'The service is busy or rate-limited. Wait before choosing Retry.',
+        'apiLength': 'The response was cut short. Shorten the input or split it further before retrying.',
+        'apiFormat': 'The service returned an unexpected response or no translation.',
+        'search': 'Search saved translations',
+        'query': 'Search the original or translated text. Leave blank to show all.',
+        'noHistory': 'No valid saved translations found. Files not yet downloaded from iCloud may also be '
+                     'unavailable.',
+        'recordGone': 'This saved translation is unavailable. Wait for iCloud to download it and try again.',
+        'export': 'Export bilingual TXT',
+        'info': 'Info and help',
+        'original': 'Original',
+        'translation': 'Translation',
+        'fromSaved': 'SAVED TRANSLATION',
+        'fromAI': 'AI TRANSLATION',
+        'progress': 'Translating text sections',
+        'chars': 'characters',
+        'tooMany': 'Choose at most 10 items per run. Select fewer images or text items.',
+        'title': 'Translate AI · © Sentechtipsvn',
+        'about': 'About this shortcut',
+        'help': 'Usage guide',
+        'helpAPI': 'Get a DeepSeek API key',
+        'helpText': 'Translate text and shared content',
+        'helpImages': 'Translate photos / screenshots',
+        'helpLanguages': 'Languages and translation style',
+        'helpLibrary': 'Save and find translations',
+        'helpPrivacy': 'API keys, data and troubleshooting',
+        'openAPI': 'Open DeepSeek API key page',
+        'apiOptions': 'What would you like to do next?',
+        'keyStorageTitle': 'API key storage',
+        'uiRecovered': 'The main interface file is unavailable; using the backup saved in iCloud.',
+        'aboutBody': 'TRANSLATE AI\n'
+                     '© Sentechtipsvn\n'
+                     '\n'
+                     'Translate text and text in images with DeepSeek. Accept input from the Share Sheet, '
+                     'clipboard, screenshots, camera or Files.\n'
+                     '\n'
+                     'On-device OCR lets you edit extracted text before translation. Choose from 20 target '
+                     'languages and faithful or natural wording. View bilingual text, copy, listen, export '
+                     'TXT and save translations to iCloud for reuse.\n'
+                     '\n'
+                     'New translations require internet, your own DeepSeek account and an API key. Open the '
+                     'Usage guide for setup instructions.',
+        'guideAPI': 'GET A DEEPSEEK API KEY\n'
+                    '\n'
+                    '1. You need your own DeepSeek account. On the next screen, tap Open DeepSeek API key '
+                    'page to open the official platform and sign in or register.\n'
+                    '\n'
+                    '2. In DeepSeek Platform, open API keys → Create new API key. Give it a recognizable '
+                    'name, create it and copy the key immediately. Never post it in a group or bundle it '
+                    'with a shared shortcut.\n'
+                    '\n'
+                    '3. The API is a PAID service billed by the amount of text processed (input and output '
+                    'tokens). Short translations usually have a low cost, but the service is not free and '
+                    'there is no fixed price per translation. Check your balance / Top up and current '
+                    'pricing before use; you need enough API balance.\n'
+                    '\n'
+                    '4. Return to the shortcut → Settings → DeepSeek API key → Enter API key. Paste it and '
+                    'select This session only or explicitly choose Remember in iCloud. You can also import '
+                    'your own TXT key file.\n'
+                    '\n'
+                    '5. Try a short sentence. If authentication fails, check your key. If the balance is '
+                    'insufficient, add funds in DeepSeek Platform. Official pricing: '
+                    'https://api-docs.deepseek.com/quick_start/pricing/',
+        'guideText': 'TRANSLATE TEXT\n'
+                     '\n'
+                     '• From another app: select text → Share → Translate AI. Shared text goes straight into '
+                     'translation using your saved preferences.\n'
+                     '• Run directly: select Enter text or Paste from clipboard. The clipboard is read only '
+                     'when you choose that option.\n'
+                     '• Set the target language in Settings. Source language defaults to automatic '
+                     'detection.\n'
+                     '• After translation: view the translation or bilingual text, copy, listen, save or '
+                     'export TXT. Choose Edit original text to change the input.\n'
+                     '• Translate into another language starts from the original text. Translate again with '
+                     'AI sends a new request and may incur a charge.\n'
+                     '\n'
+                     'Each run accepts up to 18,000 characters. Long text is split into sections; Retry '
+                     'continues the unfinished part when the service returns an error and the session is '
+                     'still running.',
+        'guideImages': 'TRANSLATE PHOTOS AND SCREENSHOTS\n'
+                       '\n'
+                       '1. Share images to the shortcut, or choose Photos / screenshots, Take a photo or '
+                       'Choose an image from Files. Select at most 10 items per run.\n'
+                       '2. Text is extracted on your device. Check and edit names, numbers, punctuation and '
+                       'line order. If no text is found, you can enter it manually on this screen.\n'
+                       '3. Tap Done to send the reviewed text to DeepSeek and get a translation. Original '
+                       'images are not sent to DeepSeek or stored in the translation library.\n'
+                       '\n'
+                       'Clear, well-lit, straight images work best. Recognition depends on the language and '
+                       'iOS; handwriting and multiple columns may be inaccurate. Choose fewer images if '
+                       'processing is slow. Cancelling a system prompt ends the session.',
+        'guideLanguages': 'LANGUAGES AND TRANSLATION STYLE\n'
+                          '\n'
+                          'Settings → Translate into: choose one of 20 target languages and keep it for '
+                          'future runs. Leave Source language on Detect automatically or choose a fixed '
+                          'source.\n'
+                          '\n'
+                          'Select Faithful translation or Natural wording, same meaning. AI instructions ask '
+                          'it to preserve names, numbers, currencies, URLs, code and line breaks. Review the '
+                          'result before use. Read-aloud requires a matching voice on the device.\n'
+                          '\n'
+                          'Interface language is separate from translation language. On first choosing '
+                          'Vietnamese or English, the shortcut downloads only that interface JSON pack from '
+                          'GitHub to iCloud. Later runs use the saved pack without downloading it every '
+                          'time. Switching needs internet if that pack is missing; a backup can recover an '
+                          'unavailable main pack.\n'
+                          '\n'
+                          'Saved translations are available offline once the interface pack and iCloud files '
+                          'are downloaded to your device.',
+        'guideLibrary': 'SAVE AND REUSE TRANSLATIONS\n'
+                        '\n'
+                        '• Choose Save translation after translating to write it to iCloud '
+                        'Drive/Shortcuts/TranslateAI/records. Until you save, translation content stays in '
+                        'the current session.\n'
+                        '• Open Saved translations to search both original and translated text. Leave the '
+                        'query blank to show all.\n'
+                        '• Matching saved content and settings reuse the existing translation before reading '
+                        'an API key or calling AI. The screen says SAVED TRANSLATION.\n'
+                        '• Choose Translate again with AI for a new result. Replacing an existing save '
+                        'requires confirmation; its previous version is kept in backups.\n'
+                        '• Export bilingual TXT lets you choose where to save or share it.\n'
+                        '\n'
+                        'Readable JSON files contain the original, translation, languages, style and date, '
+                        'without original images or an API key. Wait for iCloud downloads if a save is '
+                        'missing. Upgrading keeps existing settings, remembered key preferences and saved '
+                        'translations.',
+        'guidePrivacy': 'API KEYS, DATA AND TROUBLESHOOTING\n'
+                        '\n'
+                        'By default a key stays in the session. Remember in iCloud is an explicit option '
+                        'creating a readable key.txt in Files, without separate password encryption or '
+                        'Keychain. Never share this file. Forget key disables automatic key reuse before '
+                        'requesting deletion in Files.\n'
+                        '\n'
+                        'Settings, interface packs and saved translations live in iCloud '
+                        'Drive/Shortcuts/TranslateAI. Translation JSON is readable too; iCloud protection '
+                        'follows your account settings. Neither API keys nor translation content go to '
+                        'GitHub. GitHub only serves interface text; only the text being translated is sent '
+                        'to DeepSeek.\n'
+                        '\n'
+                        'Authentication error: enter a valid key. Insufficient balance: check your DeepSeek '
+                        'account. Busy / rate limit: wait, then retry the unfinished part. Empty or '
+                        'truncated replies are not marked as complete translations.\n'
+                        '\n'
+                        'If iOS stops a network, SSL or permissions action, run again with the original '
+                        'input. Unsaved work does not automatically survive the end of a session. A server '
+                        'may already have processed a request before a connection fails; retrying can incur '
+                        'another charge.\n'
+                        '\n'
+                        'Cancelling a system prompt ends the session. Use menu Back buttons to return to the '
+                        'previous screen.'}}
+LANGUAGES={'vi': {'name': 'Tiếng Việt', 'english': 'Vietnamese', 'speech': 'vi-VN'},
+ 'en': {'name': 'English', 'english': 'English', 'speech': 'en-US'},
+ 'en-GB': {'name': 'English (UK)', 'english': 'British English', 'speech': 'en-GB'},
+ 'ja': {'name': '日本語', 'english': 'Japanese', 'speech': 'ja-JP'},
+ 'ko': {'name': '한국어', 'english': 'Korean', 'speech': 'ko-KR'},
+ 'zh-Hans': {'name': '简体中文', 'english': 'Simplified Chinese', 'speech': 'zh-CN'},
+ 'zh-Hant': {'name': '繁體中文', 'english': 'Traditional Chinese', 'speech': 'zh-TW'},
+ 'fr': {'name': 'Français', 'english': 'French', 'speech': 'fr-FR'},
+ 'de': {'name': 'Deutsch', 'english': 'German', 'speech': 'de-DE'},
+ 'ru': {'name': 'Русский', 'english': 'Russian', 'speech': 'ru-RU'},
+ 'es': {'name': 'Español', 'english': 'Spanish', 'speech': 'es-ES'},
+ 'th': {'name': 'ไทย', 'english': 'Thai', 'speech': 'th-TH'},
+ 'id': {'name': 'Bahasa Indonesia', 'english': 'Indonesian', 'speech': 'id-ID'},
+ 'tr': {'name': 'Türkçe', 'english': 'Turkish', 'speech': 'tr-TR'},
+ 'it': {'name': 'Italiano', 'english': 'Italian', 'speech': 'it-IT'},
+ 'pt-BR': {'name': 'Português (Brasil)', 'english': 'Brazilian Portuguese', 'speech': 'pt-BR'},
+ 'hi': {'name': 'हिन्दी', 'english': 'Hindi', 'speech': 'hi-IN'},
+ 'ar': {'name': 'العربية', 'english': 'Arabic', 'speech': 'ar-SA'},
+ 'nl': {'name': 'Nederlands', 'english': 'Dutch', 'speech': 'nl-NL'},
+ 'pl': {'name': 'Polski', 'english': 'Polish', 'speech': 'pl-PL'}}
+def write(path,value):
+    path.parent.mkdir(parents=True,exist_ok=True)
+    path.write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n')
+write(ROOT/'strings.json',STRINGS)
+write(ROOT/'languages.json',LANGUAGES)
+for locale,labels in STRINGS.items():
+    pack={'_product':'translate-ai-ui','_schema':'1','_version':PACK_VERSION,'_locale':locale,**labels}
+    for field,attr in [('_names','name'),('_english','english'),('_speech','speech')]:
+        pack[field]=json.dumps({code:desc[attr] for code,desc in LANGUAGES.items()},ensure_ascii=False,separators=(',',':'))
+    write(ROOT.parent/'resources'/('ui-v'+PACK_VERSION)/(locale+'.json'),pack)

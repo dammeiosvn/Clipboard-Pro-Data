@@ -15,7 +15,7 @@ def literal(f):return f['WFValue']['Value']['string']
 def audit(signed=False):
  raw=(ROOT/'dist/Translate-AI.unsigned.bplist').read_bytes();workflow=plistlib.loads(raw)
  assert workflow==plistlib.loads((ROOT/'dist/Translate-AI.unsigned.shortcut').read_bytes())
- seen={};stack=[];spans=0;http=0;clipboard=0
+ seen={};stack=[];spans=0;http=0;ui_http=0;opened_api=0;clipboard=0
  contract=json.loads((ROOT/'config/native-actions.json').read_text());known=set(contract['identifiers'])
  strings=json.loads((ROOT/'config/strings.json').read_text())
  assert set(strings)=={'vi','en'} and set(strings['vi'])==set(strings['en'])
@@ -45,6 +45,13 @@ def audit(signed=False):
     for n in walk(p['WFConditionalActionString']):
      if n.get('Type')=='ActionOutput':assert seen[n['OutputUUID']]['WFWorkflowActionIdentifier'].endswith('.gettext')
   if kind.endswith('.downloadurl'):
+   if p['WFHTTPMethod']=='GET':
+    ui_http+=1
+    assert p['WFURL']['Value']['string']=='https://raw.githubusercontent.com/dammeiosvn/Clipboard-Pro-Data/main/translate-ai/resources/ui-v1/\ufffc.json'
+    assert list(p['WFURL']['Value']['attachmentsByRange'].values())==[{'Type':'Variable','VariableName':'RequestedUI'}]
+    assert set(p)=={'WFURL','WFHTTPMethod','UUID','CustomOutputName'}
+    seen[p['UUID']]=action
+    continue
    http+=1
    assert p['WFURL']=='https://api.deepseek.com/chat/completions'
    assert p['WFHTTPMethod']=='POST' and p['WFHTTPBodyType']=='JSON'
@@ -64,19 +71,28 @@ def audit(signed=False):
   if kind.endswith('.file.select'):assert isinstance(p['SelectMultiple'],bool) and 'WFShowFilePicker' not in p
   if kind.endswith('.documentpicker.open'):assert not p.get('WFShowFilePicker')
   if kind.endswith('.setclipboard'):clipboard+=1;assert p['WFLocalOnly'] is True
+  if kind.endswith('.openurl'):
+   opened_api+=1
+   assert p['WFInput']['Value']['string']=='https://platform.deepseek.com/api_keys'
+   assert not p['WFInput']['Value']['attachmentsByRange']
   seen[p['UUID']]=action
- assert not stack and http==1 and clipboard==1
+ assert not stack and http==1 and ui_http==1 and opened_api==1 and clipboard==1
  ids=set(x['WFWorkflowActionIdentifier'] for x in workflow['WFWorkflowActions'])
- for forbidden in ('runworkflow','showwebpage','runjavascript','openurl','sendemail','sendmessage'):
+ for forbidden in ('alert','runworkflow','showwebpage','runjavascript','sendemail','sendmessage'):
   assert 'is.workflow.actions.'+forbidden not in ids
  assert set(workflow['WFWorkflowInputContentItemClasses'])=={'WFImageContentItem','WFStringContentItem','WFRichTextContentItem','WFGenericFileContentItem'}
+ encoded=json.dumps(workflow,ensure_ascii=False)
+ for locale in strings:
+  for key in ('title','main','aboutBody','guideAPI','guidePrivacy'):
+   assert strings[locale][key] not in encoded,'Embedded UI text: '+locale+'/'+key
  for n in walk(workflow):
   for value in n.values():
    if isinstance(value,str):assert not re.search(r'(?:sk-[A-Za-z0-9_-]{16,}|AIza[A-Za-z0-9_-]{20,})',value),'Embedded credential'
- report={'balancedControlFlow':True,'uniqueUUIDs':True,'validUTF16Spans':spans,'forwardReferencesAbsent':True,'nativeIdentifiers':len(ids),'singlePinnedDeepSeekPOST':True,'nativeJSONRequestShapeVerified':True,'personalBookmarksRemoved':True,'noEmbeddedCredential':True,'clipboardWriteRequiresResultMenu':True,'actions':len(workflow['WFWorkflowActions']),'nativeDeviceVerified':False,'signedActionGraphEqual':None}
+ report={'balancedControlFlow':True,'uniqueUUIDs':True,'validUTF16Spans':spans,'forwardReferencesAbsent':True,'nativeIdentifiers':len(ids),'singlePinnedDeepSeekPOST':True,'singleSelectedLocaleGET':True,'UIResourcesNotEmbedded':True,'noNativeAlertActions':True,'onlyUserRequestedOfficialAPIPageOpens':True,'nativeJSONRequestShapeVerified':True,'personalBookmarksRemoved':True,'noEmbeddedCredential':True,'clipboardWriteRequiresResultMenu':True,'actions':len(workflow['WFWorkflowActions']),'nativeDeviceVerified':False,'signedActionGraphEqual':None}
  if signed:
   import lzfse
-  archive=(ROOT/'dist/Translate-AI-2.0-beta1.shortcut').read_bytes();assert archive.startswith(b'AEA1')
+  from build import VERSION
+  archive=(ROOT/('dist/Translate-AI-'+VERSION+'.shortcut')).read_bytes();assert archive.startswith(b'AEA1')
   payload=lzfse.decompress(archive[archive.find(b'bvx2'):]);start=payload.find(b'bplist00');length=int.from_bytes(payload[start-4:start],'little')
   actual=plistlib.loads(payload[start:start+length]);assert actual['WFWorkflowActions']==workflow['WFWorkflowActions'];assert actual['WFWorkflowInputContentItemClasses']==workflow['WFWorkflowInputContentItemClasses']
   report.update(signedActionGraphEqual=True,signedBytes=len(archive),signedSHA256=hashlib.sha256(archive).hexdigest())
