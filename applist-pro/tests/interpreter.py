@@ -109,12 +109,16 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
             answer = outputs[value['OutputUUID']]
         elif kind == 'ExtensionInput':
             answer = incoming
+        elif kind == 'CurrentDate':
+            answer = '2026-11-01 17:00:00 +0700'
         else:
             return value
         for transform in value.get('Aggrandizements', []):
             typ = transform['Type']
             if typ == 'WFDictionaryValueVariableAggrandizement':
                 answer = answer.get(transform['DictionaryKey'])
+            elif typ == 'WFDateFormatVariableAggrandizement':
+                assert transform['WFDateFormatStyle'] == 'Custom'
             elif typ == 'WFCoercionVariableAggrandizement':
                 if transform['CoercionItemClass'] == 'WFStringContentItem':
                     answer = as_text(answer)
@@ -194,6 +198,9 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
                 obj = evaluate(p['WFInput'])
                 assert isinstance(obj, dict), (kind, type(obj), obj)
                 typ = p.get('WFGetDictionaryValueType', 'Value')
+                if typ == 'Value':
+                    key = stringify(evaluate(p['WFDictionaryKey']))
+                    assert key in obj, ('unguarded missing dictionary key', key)
                 answer = list(obj) if typ == 'All Keys' else list(obj.values()) if typ == 'All Values' else obj.get(stringify(evaluate(p['WFDictionaryKey'])))
             elif kind == 'setvalueforkey':
                 answer = dict(evaluate(p['WFDictionary']))

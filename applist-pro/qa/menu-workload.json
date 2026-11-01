@@ -1,0 +1,49 @@
+{
+  "measurement": "Executed actions in the host graph interpreter; not iPhone timing",
+  "nativeDeviceTimingMeasured": false,
+  "normalLaunchWrites": 0,
+  "normalLaunchNetworkRequests": 0,
+  "largeListEditReloadPassed": [
+    10,
+    50,
+    100
+  ],
+  "results": [
+    {
+      "version": "beta4",
+      "apps": 10,
+      "actionsBeforeFirstMenu": 492,
+      "meanAdditionalActionsPerManageAndBack": 244.0
+    },
+    {
+      "version": "beta5",
+      "apps": 10,
+      "actionsBeforeFirstMenu": 444,
+      "meanAdditionalActionsPerManageAndBack": 129.0
+    },
+    {
+      "version": "beta4",
+      "apps": 50,
+      "actionsBeforeFirstMenu": 892,
+      "meanAdditionalActionsPerManageAndBack": 644.0
+    },
+    {
+      "version": "beta5",
+      "apps": 50,
+      "actionsBeforeFirstMenu": 924,
+      "meanAdditionalActionsPerManageAndBack": 129.0
+    },
+    {
+      "version": "beta4",
+      "apps": 100,
+      "actionsBeforeFirstMenu": 1392,
+      "meanAdditionalActionsPerManageAndBack": 1144.0
+    },
+    {
+      "version": "beta5",
+      "apps": 100,
+      "actionsBeforeFirstMenu": 1524,
+      "meanAdditionalActionsPerManageAndBack": 129.0
+    }
+  ]
+}

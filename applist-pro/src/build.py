@@ -4,15 +4,17 @@ import hashlib
 import json
 import plistlib
 
-from catalog import BASE_URL, VERSION, DATA_VERSION, KEYS, publish
+from catalog import BASE_URL, VERSION, DATA_VERSION, LEGACY_DATA_VERSION, BASE_KEYS, KEYS, publish, strings_catalog
 from workflow import Workflow, dictionary_value, variable as v, ref, token
 
 ROOT = Path(__file__).resolve().parents[1]
-SCHEMA = '4'
-ACTIVE = 'apps.v4.json'
-PREVIOUS = 'apps.previous.v4.json'
-PENDING = 'apps.pending.v4.json'
-LABELS = 'labels.v4.json'
+SCHEMA = '5'
+MAPS = ('Names', 'Bundles', 'Stores', 'Pins', 'Order')
+HISTORY = ('history.1.v5.json', 'history.2.v5.json', 'history.3.v5.json')
+ACTIVE = 'apps.v5.json'
+PREVIOUS = 'apps.previous.v5.json'
+PENDING = 'apps.pending.v5.json'
+LABELS = 'labels.v5.json'
 TITLE = 'AppList Pro · © Sentechtipsvn'
 FOLDER = {'fileLocation': {'WFFileLocationType': 'Shortcuts', 'relativeSubpath': '',
     'appContainerBundleIdentifier': 'com.apple.shortcuts',
@@ -29,24 +31,30 @@ NAME = r'\A(?![⭐⚙↩])[^\x00-\x1f\x7f\r\n]{1,90}\z'
 STORE = r'\Ahttps://apps\.apple\.com/(?:[^\s/#?]+/)*id[0-9]+(?:\?[^\s#]*)?(?:#[^\s]*)?\z'
 
 
-def object_pattern(keys):
+def object_pattern(keys, nonempty=False):
     # Limit keys before using Get Dictionary Value. Exactly N distinct keys
     # after parsing implies every required key is present, in any order.
-    field = r'"(?:' + '|'.join(keys) + r')"\s*:\s*' + JS
+    value_pattern = JS.replace('*"', '+"') if nonempty else JS
+    field = r'"(?:' + '|'.join(keys) + r')"\s*:\s*' + value_pattern
     return r'\A\s*\{\s*' + field + r'(?:\s*,\s*' + field + r'){' + str(len(keys) - 1) + r'}\s*\}\s*\z'
 
 
-STATE_PATTERN = object_pattern(('product', 'schema', 'language', 'revision',
+LEGACY_STATE_PATTERN = object_pattern(('product', 'schema', 'language', 'revision',
     'namesJSON', 'bundlesJSON', 'storesJSON', 'pinsJSON'))
-LABEL_PATTERN = object_pattern((*KEYS, '_locale', '_dataVersion'))
+STATE_PATTERN = object_pattern(('product', 'schema', 'language', 'revision', 'savedAt',
+    'namesJSON', 'bundlesJSON', 'storesJSON', 'pinsJSON', 'orderJSON'))
+ANY_STATE_PATTERN = '(?:' + STATE_PATTERN + '|' + LEGACY_STATE_PATTERN + ')'
+LEGACY_LABEL_PATTERN = object_pattern((*BASE_KEYS, '_locale', '_dataVersion'), nonempty=True)
+LABEL_PATTERN = object_pattern((*KEYS, '_locale', '_dataVersion'), nonempty=True)
 
 
 def build():
     descriptors = publish()
-    catalog = json.loads((ROOT / 'config/strings.json').read_text())
+    catalog = strings_catalog()
+    extensions = json.loads((ROOT / 'config/extensions.json').read_text())
     boot = {'name': 'AppList Pro', 'title': TITLE, 'author': '© Sentechtipsvn',
             'version': VERSION, 'baseURL': BASE_URL, 'languages': descriptors,
-            'fallback': catalog['en'], 'dataVersion': DATA_VERSION, 'values': {}}
+            'fallback': catalog['en'], 'uiExtensions': {code: json.dumps(values, ensure_ascii=False) for code, values in extensions.items()}, 'dataVersion': DATA_VERSION, 'values': {}}
     w = Workflow('AppList Pro')
     a, get, text, put, L = w.action, w.get, w.text, w.put, w.label
 
@@ -85,27 +93,79 @@ def build():
         check(text('value:', value), text('value:', expected), message, code)
 
     def candidate(source):
-        """Read a flat native JSON file; map JSON is encoded by iOS, not by us."""
+        """The beta4 native JSON protocol, with schema5 order and timestamp fields."""
         w.assign('CandidateOK', '0')
         raw = a('detect.text', {'WFInput': ref(source)}, 'Read state file contents')
-        guards = [w.if_match(raw, STATE_PATTERN)]
+        guards = [w.if_match(raw, ANY_STATE_PATTERN)]
         data = a('detect.dictionary', {'WFInput': ref(raw)}, 'Native app state')
-        guards.append(w.if_eq(w.count(w.keys(data)), '8'))
-        for key, expected in [('product', 'applist-pro'), ('schema', SCHEMA)]:
-            guards.append(w.if_eq(get(data, key), expected))
+        schema = text(get(data, 'schema'))
+        guards.append(w.if_match(schema, r'\A[45]\z'))
+        w.assign('ExpectedFields', '10')
+        old = w.if_eq(schema, '4')
+        w.assign('ExpectedFields', '8')
+        w.end_if(old)
+        guards.append(w.if_eq(w.count(w.keys(data)), v('ExpectedFields')))
+        guards.append(w.if_eq(get(data, 'product'), 'applist-pro'))
         lang = text(get(data, 'language'))
         guards.append(w.if_match(lang, r'\A(?:' + '|'.join(descriptors) + r')\z'))
         revision = text(get(data, 'revision'))
         guards.append(w.if_match(revision, r'\A[0-9a-f]{64}\z'))
         maps = {}
-        for collection in ('Names', 'Bundles', 'Stores', 'Pins'):
+        for collection in MAPS[:4]:
             body = text(get(data, collection.lower() + 'JSON'))
             pattern = r'\A\s*' + PIN_MAP + r'\s*\z' if collection == 'Pins' else FLAT_PATTERN
             guards.append(w.if_match(body, pattern))
             maps[collection] = a('detect.dictionary', {'WFInput': ref(body)}, 'Read ' + collection)
         count = w.count(w.keys(maps['Names']))
-        for collection in ('Bundles', 'Stores', 'Pins'):
+        for collection in MAPS[1:4]:
             guards.append(w.if_eq(w.count(w.keys(maps[collection])), count))
+        w.empty_dict('CandidateOrder')
+        w.assign('CandidateSavedAt', 'beta4')
+        w.assign('OrderOK', '1')
+        modern = w.if_eq(schema, SCHEMA)
+        order_text = text(get(data, 'orderJSON'))
+        order_syntax = w.if_match(order_text, FLAT_PATTERN)
+        order = a('detect.dictionary', {'WFInput': ref(order_text)}, 'Read app positions')
+        order_count = w.if_eq(w.count(w.keys(order)), count)
+        w.set('CandidateOrder', order)
+        w.otherwise(order_count)
+        w.assign('OrderOK', '0')
+        w.end_if(order_count)
+        w.otherwise(order_syntax)
+        w.assign('OrderOK', '0')
+        w.end_if(order_syntax)
+        w.set('CandidateSavedAt', text(get(data, 'savedAt')))
+        w.otherwise(modern)
+        loop, identifier = w.each(w.keys(maps['Names']))
+        w.set('CandidateOrder', put(v('CandidateOrder'), identifier, text('000000')))
+        w.end_loop(loop)
+        w.end_if(modern)
+        guards.append(w.if_eq(v('OrderOK'), '1'))
+        w.assign('MapKeysOK', '1')
+        populated = w.if_gt(count)
+        key_lists = {'Names': w.keys(maps['Names'])}
+        for collection in MAPS[1:]:
+            key_lists[collection] = w.keys(v('CandidateOrder') if collection == 'Order' else maps[collection])
+        for collection, keys in key_lists.items():
+            ordered = a('filter.files', {'WFContentItemInputParameter': ref(keys),
+                'WFContentItemSortOrder': 'A to Z', 'WFContentItemSortProperty': 'Name'}, 'Sort stable app IDs')
+            lines = a('text.combine', {'text': ref(ordered), 'WFTextSeparator': 'New Lines'}, 'Stable ID set')
+            if collection == 'Names':
+                w.set('ExpectedKeySet', w.hash(lines))
+                valid = w.if_match(lines, r'\A[0-9a-f]{64}(?:\n[0-9a-f]{64})*\z')
+            else:
+                valid = w.if_eq(w.hash(lines), v('ExpectedKeySet'))
+            w.otherwise(valid)
+            w.assign('MapKeysOK', '0')
+            w.end_if(valid)
+        ranks = a('getvalueforkey', {'WFInput': ref(v('CandidateOrder')), 'WFGetDictionaryValueType': 'All Values'}, 'All app positions')
+        rank_lines = a('text.combine', {'text': ref(ranks), 'WFTextSeparator': 'New Lines'}, 'Position values')
+        valid = w.if_match(rank_lines, r'\A[0-9]{6}(?:\n[0-9]{6})*\z')
+        w.otherwise(valid)
+        w.assign('MapKeysOK', '0')
+        w.end_if(valid)
+        w.end_if(populated)
+        guards.append(w.if_eq(v('MapKeysOK'), '1'))
         w.set('Candidate', data)
         w.set('CandidateEnvelope', data)
         w.set('CandidateDigest', revision)
@@ -117,59 +177,110 @@ def build():
 
     def bind():
         w.set('Language', get(v('Candidate'), 'language'))
-        for collection in ('Names', 'Bundles', 'Stores', 'Pins'):
+        for collection in MAPS:
             w.set(collection, v('Candidate' + collection))
         w.assign('LanguageReady', '1')
+        w.assign('RowsReady', '0')
 
     def labels_candidate(source, language):
         w.assign('LabelsOK', '0')
         raw = a('detect.text', {'WFInput': ref(source)}, 'Read language file contents')
-        guards = [w.if_match(raw, LABEL_PATTERN)]
+        guards = [w.if_match(raw, '(?:' + LABEL_PATTERN + '|' + LEGACY_LABEL_PATTERN + ')')]
         labels = a('detect.dictionary', {'WFInput': ref(raw)}, 'Cached language dictionary')
-        guards.append(w.if_eq(w.count(w.keys(labels)), str(len(KEYS) + 2)))
+        version = text(get(labels, '_dataVersion'))
+        guards.append(w.if_match(version, r'\A(?:1\.1\.0-beta\.[15])\z'))
+        w.assign('ExpectedLabels', str(len(KEYS) + 2))
+        old = w.if_eq(version, LEGACY_DATA_VERSION)
+        w.assign('ExpectedLabels', str(len(BASE_KEYS) + 2))
+        w.end_if(old)
+        guards.append(w.if_eq(w.count(w.keys(labels)), v('ExpectedLabels')))
         guards.append(w.if_eq(get(labels, '_locale'), language))
-        guards.append(w.if_eq(get(labels, '_dataVersion'), get(v('Config'), 'dataVersion')))
-        w.assign('LabelKeysOK', '1')
-        loop, key = w.each(w.keys(get(v('Config'), 'fallback')))
-        present = w.if_text(text(get(labels, key)))
-        w.otherwise(present)
-        w.assign('LabelKeysOK', '0')
-        w.end_if(present)
-        w.end_loop(loop)
-        guards.append(w.if_eq(v('LabelKeysOK'), '1'))
         w.set('CachedStrings', labels)
+        legacy_extensions = w.if_eq(version, LEGACY_DATA_VERSION)
+        extra = a('detect.dictionary', {'WFInput': ref(get(get(v('Config'), 'uiExtensions'), language))}, 'Offline beta5 UI labels')
+        loop, key = w.each(w.keys(extra))
+        w.set('CachedStrings', put(v('CachedStrings'), key, get(extra, key)))
+        w.end_loop(loop)
+        w.end_if(legacy_extensions)
         w.assign('LabelsOK', '1')
         for group in reversed(guards):
             w.end_if(group)
 
     def load_labels():
-        # A damaged or mismatched UI cache must not block the app launcher.
         w.set('Strings', get(v('Config'), 'fallback'))
-        labels_candidate(read(LABELS), v('Language'))
+        w.assign('LabelsFound', '0')
+        sources = a('list', {'WFItems': [{'WFItemType': 0, 'WFValue': token(name)} for name in
+            (LABELS, 'labels.previous.v5.json', 'labels.v4.json', 'labels.previous.v4.json')]}, 'Language cache preference')
+        loop, filename = w.each(sources)
+        missing = w.if_eq(v('LabelsFound'), '0')
+        labels_candidate(read(filename), v('Language'))
         good = w.if_eq(v('LabelsOK'), '1')
         w.set('Strings', v('CachedStrings'))
-        w.otherwise(good)
-        labels_candidate(read('labels.previous.v4.json'), v('Language'))
-        previous = w.if_eq(v('LabelsOK'), '1')
-        w.set('Strings', v('CachedStrings'))
-        w.end_if(previous)
+        w.assign('LabelsFound', '1')
         w.end_if(good)
+        w.end_if(missing)
+        w.end_loop(loop)
 
     def ensure_unchanged():
         known = w.if_match(v('DiskDigest'), r'\A[0-9a-f]{64}\z')
         raw = a('detect.text', {'WFInput': ref(read(ACTIVE))}, 'Read current revision')
-        valid = w.if_match(raw, STATE_PATTERN)
+        valid = w.if_match(raw, ANY_STATE_PATTERN)
         w.otherwise(valid)
         w.alert(L('changedElsewhere'), stop=True, title=TITLE)
         w.end_if(valid)
         data = a('detect.dictionary', {'WFInput': ref(raw)}, 'Current revision metadata')
-        check(w.count(w.keys(data)), '8', 'changedElsewhere')
+        w.assign('ExpectedRevisionFields', '10')
+        legacy = w.if_eq(get(data, 'schema'), '4')
+        w.assign('ExpectedRevisionFields', '8')
+        w.end_if(legacy)
+        check(w.count(w.keys(data)), v('ExpectedRevisionFields'), 'changedElsewhere')
         scalar_check(get(data, 'revision'), v('DiskDigest'), 'changedElsewhere')
+        w.otherwise(known)
+        # A missing/corrupt file at startup is not a licence to overwrite a
+        # valid state created by another session while this one was open.
+        raw = a('detect.text', {'WFInput': ref(read(ACTIVE))}, 'Check first-write race')
+        present = w.if_text(raw)
+        originally_missing = w.if_eq(v('InitialDiskPresent'), '0')
+        w.alert(L('changedElsewhere'), stop=True, title=TITLE)
+        w.otherwise(originally_missing)
+        now_valid = w.if_match(raw, ANY_STATE_PATTERN)
+        w.alert(L('changedElsewhere'), stop=True, title=TITLE)
+        w.end_if(now_valid)
+        w.end_if(originally_missing)
+        w.end_if(present)
         w.end_if(known)
+
+    def rotate_history():
+        copies = {HISTORY[2]: HISTORY[1], HISTORY[1]: HISTORY[0], HISTORY[0]: 'current'}
+        mapping = a('dictionary', {'WFItems': dictionary_value(copies)}, 'Restore point rotation')
+        destinations = a('list', {'WFItems': [{'WFItemType': 0, 'WFValue': token(name)} for name in reversed(HISTORY)]}, 'Rotate oldest first')
+        loop, destination = w.each(destinations)
+        w.set('HistoryDestination', destination)
+        source = text(get(mapping, destination))
+        w.assign('HistoryReady', '0')
+        current = w.if_eq(source, 'current')
+        w.set('HistoryBody', v('ActiveEnvelope'))
+        w.set('HistoryRevision', v('ActiveDigest'))
+        w.assign('HistoryReady', '1')
+        w.otherwise(current)
+        candidate(read(source))
+        good = w.if_eq(v('CandidateOK'), '1')
+        w.set('HistoryBody', v('CandidateEnvelope'))
+        w.set('HistoryRevision', v('CandidateDigest'))
+        w.assign('HistoryReady', '1')
+        w.end_if(good)
+        w.end_if(current)
+        ready = w.if_eq(v('HistoryReady'), '1')
+        save(v('HistoryBody'), v('HistoryDestination'))
+        candidate(read(v('HistoryDestination')))
+        check(v('CandidateOK'), '1', 'saveFailed', 'AP5 history')
+        scalar_check(v('CandidateDigest'), v('HistoryRevision'), code='AP5 history')
+        w.end_if(ready)
+        w.end_loop(loop)
 
     def persist():
         fields = {'product': 'applist-pro', 'schema': SCHEMA, 'language': v('Language')}
-        for collection in ('Names', 'Bundles', 'Stores', 'Pins'):
+        for collection in MAPS:
             # Empty Dictionary -> Text can be absent on iOS. Use an explicit
             # native string for this one special case.
             w.assign(collection + 'JSON', '{}')
@@ -179,9 +290,12 @@ def build():
             fields[collection.lower() + 'JSON'] = v(collection + 'JSON')
         # Opaque revision generated once, stored and compared as text. This is
         # a concurrency token, not a hash of the file's JSON serialization.
+        now = {'Type': 'CurrentDate', 'Aggrandizements': [{'Type': 'WFDateFormatVariableAggrandizement', 'WFDateFormatStyle': 'Custom', 'WFISO8601IncludeTime': False, 'WFDateFormat': 'yyyy-MM-dd HH:mm:ss Z'}]}
+        w.set('NewSavedAt', text(now))
         w.set('NewDigest', w.hash(text(v('NamesJSON'), v('BundlesJSON'),
-            v('StoresJSON'), v('PinsJSON'), v('Language'), v('ActiveDigest'))))
+            v('StoresJSON'), v('PinsJSON'), v('OrderJSON'), v('Language'), v('ActiveDigest'), v('NewSavedAt'))))
         fields['revision'] = v('NewDigest')
+        fields['savedAt'] = v('NewSavedAt')
         env = a('dictionary', {'WFItems': dictionary_value(fields)}, 'New native state dictionary')
         ensure_unchanged()
         a('file.createfolder', {'WFFolder': ref(v('StorageRoot')), 'WFFilePath': 'AppListPro'})
@@ -189,7 +303,7 @@ def build():
         w.otherwise(old)
         unreadable = read(ACTIVE)
         has_unreadable = w.if_has(unreadable)
-        save(unreadable, 'unreadable-before-reset.v4.json')
+        save(unreadable, 'unreadable-before-reset.v5.json')
         w.end_if(has_unreadable)
         w.end_if(old)
         # One native validation block serves each of the three writes. Order
@@ -204,6 +318,7 @@ def build():
         w.assign('WriteThis', '1')
         previous = w.if_eq(v('WriteName'), PREVIOUS)
         available = w.if_eq(v('ActiveValid'), '1')
+        rotate_history()
         w.set('WriteBody', v('ActiveEnvelope'))
         w.set('ExpectedRevision', v('ActiveDigest'))
         w.assign('VerifyContents', '0')
@@ -217,16 +332,16 @@ def build():
         w.end_if(final_write)
         save(v('WriteBody'), v('WriteName'))
         candidate(read(v('WriteName')))
-        code = text('AP4 / ', v('WriteName'))
+        code = text('AP5 / ', v('WriteName'))
         check(v('CandidateOK'), '1', 'saveFailed', code)
         scalar_check(v('CandidateDigest'), v('ExpectedRevision'), code=code)
         contents = w.if_eq(v('VerifyContents'), '1')
         records, identifier = w.each(w.keys(v('Names')))
-        for collection in ('Names', 'Bundles', 'Stores', 'Pins'):
+        for collection in MAPS:
             scalar_check(get(v('Candidate' + collection), identifier),
                          get(v(collection), identifier), code=code)
         w.end_loop(records)
-        for collection in ('Names', 'Bundles', 'Stores', 'Pins'):
+        for collection in MAPS:
             scalar_check(w.count(w.keys(v('Candidate' + collection))),
                          w.count(w.keys(v(collection))), code=code)
         scalar_check(get(v('Candidate'), 'language'), v('Language'), code=code)
@@ -239,6 +354,7 @@ def build():
         w.assign('ActiveValid', '1')
 
     def request_save(message='saved', after='main'):
+        w.assign('RowsReady', '0')
         w.assign('SaveMessage', message)
         w.assign('AfterSave', after)
         w.assign('Route', 'save')
@@ -268,34 +384,74 @@ def build():
         selected = text(w.choose(options, prompt), name='Chosen menu label')
         return text(get(mapping, selected), name='Chosen menu route')
 
-    def app_rows(back=False):
-        start_menu()
-        w.empty_list('PinnedRows')
-        w.empty_list('OtherRows')
-        loop, app_id = w.each(w.keys(v('Names')))
-        w.set('DisplayRow', get(v('Names'), app_id))
-        pinned = w.if_eq(get(v('Pins'), app_id), '1')
-        w.set('DisplayRow', text('⭐ ', v('DisplayRow')))
-        w.append('PinnedRows', v('DisplayRow'))
+    def sorted_ids():
+        w.empty_list('PinnedTokens')
+        w.empty_list('RegularTokens')
+        loop, identifier = w.each(w.keys(v('Names')))
+        value = text(get(v('Order'), identifier), '\t', get(v('Names'), identifier), '\t', identifier)
+        pinned = w.if_eq(get(v('Pins'), identifier), '1')
+        w.append('PinnedTokens', value)
         w.otherwise(pinned)
-        w.append('OtherRows', v('DisplayRow'))
+        w.append('RegularTokens', value)
         w.end_if(pinned)
-        w.set('RowMap', put(v('RowMap'), w.hash(v('DisplayRow')), app_id))
         w.end_loop(loop)
-        populated = w.if_has(w.keys(v('Names')))
-        sorted_groups = [a('filter.files', {'WFContentItemInputParameter': ref(v(source)),
-            'WFContentItemSortOrder': 'A to Z', 'WFContentItemSortProperty': 'Name'}, 'Sorted app names')
-            for source in ('PinnedRows', 'OtherRows')]
-        lines = w.replace(text(sorted_groups[0], '\n', sorted_groups[1]), r'\A\s+|\s+\z', '')
-        w.set('Rows', a('text.split', {'text': token(lines), 'WFTextSeparator': 'New Lines'}, 'App rows'))
+        w.empty_list('SortedIDs')
+        for collection in ('PinnedTokens', 'RegularTokens'):
+            populated = w.if_has(v(collection))
+            ordered = a('filter.files', {'WFContentItemInputParameter': ref(v(collection)),
+                'WFContentItemSortOrder': 'A to Z', 'WFContentItemSortProperty': 'Name'}, 'Sort app positions')
+            loop, item = w.each(ordered)
+            w.append('SortedIDs', w.first(w.match(item, r'[0-9a-f]{64}\z')))
+            w.end_loop(loop)
+            w.end_if(populated)
+
+    def app_rows(back=False):
+        rebuild = w.if_eq(v('RowsReady'), '0')
+        start_menu()
+        w.empty_list('PinnedTokens')
+        w.empty_list('RegularTokens')
+        loop, identifier = w.each(w.keys(v('Names')))
+        w.set('DisplayRow', get(v('Names'), identifier))
+        pinned = w.if_eq(get(v('Pins'), identifier), '1')
+        w.set('DisplayRow', text('⭐ ', v('DisplayRow')))
+        w.append('PinnedTokens', text(get(v('Order'), identifier), '\t', v('DisplayRow')))
+        w.otherwise(pinned)
+        w.append('RegularTokens', text(get(v('Order'), identifier), '\t', v('DisplayRow')))
+        w.end_if(pinned)
+        w.set('RowMap', put(v('RowMap'), w.hash(v('DisplayRow')), identifier))
+        w.end_loop(loop)
+        # Sort in native code and strip rank prefixes in one text operation;
+        # avoid a second interpreted loop over every app on the launch path.
+        for source, destination in [('PinnedTokens', 'SortedPinnedText'), ('RegularTokens', 'SortedRegularText')]:
+            w.assign(destination, '')
+            populated = w.if_has(v(source))
+            ordered = a('filter.files', {'WFContentItemInputParameter': ref(v(source)),
+                'WFContentItemSortOrder': 'A to Z', 'WFContentItemSortProperty': 'Name'}, 'Sort app positions')
+            w.set(destination, a('text.combine', {'text': ref(ordered), 'WFTextSeparator': 'New Lines'}, 'Sorted app labels'))
+            w.end_if(populated)
+        lines = w.replace(text(v('SortedPinnedText'), '\n', v('SortedRegularText')), r'(?m)^[0-9]{6}\t', '')
+        w.set('CachedRowsText', w.replace(lines, r'\A[\r\n]+|[\r\n]+\z', ''))
+        w.set('CachedRowMap', v('RowMap'))
+        w.assign('RowsReady', '1')
+        w.end_if(rebuild)
+        w.empty_list('Rows')
+        populated = w.if_text(v('CachedRowsText'))
+        w.set('Rows', a('text.split', {'text': token(v('CachedRowsText')), 'WFTextSeparator': 'New Lines'}, 'Fresh list from cached labels'))
         w.end_if(populated)
+        w.set('RowMap', v('CachedRowMap'))
         if back:
             row(text('↩️ ', L('back')), text('back'))
 
     def choose_language():
         start_menu()
+        ready = w.if_eq(v('LanguageReady'), '1')
+        row(text('✓ ', get(get(get(v('Config'), 'languages'), v('Language')), 'name')), v('Language'))
+        w.end_if(ready)
         loop, code = w.each(w.keys(get(v('Config'), 'languages')))
+        current = w.if_eq(code, v('Language'))
+        w.otherwise(current)
         row(get(get(get(v('Config'), 'languages'), code), 'name'), code)
+        w.end_if(current)
         w.end_loop(loop)
         w.set('NewLanguage', finish(text('🌐 ', L('language'))))
 
@@ -314,12 +470,12 @@ def build():
         labels = put(labels, text('_dataVersion'), get(v('Config'), 'dataVersion'))
         w.set('NextStrings', labels)
         a('file.createfolder', {'WFFolder': ref(v('StorageRoot')), 'WFFilePath': 'AppListPro'})
-        save(v('NextStrings'), 'labels.pending.v4.json')
-        labels_candidate(read('labels.pending.v4.json'), v('NewLanguage'))
+        save(v('NextStrings'), 'labels.pending.v5.json')
+        labels_candidate(read('labels.pending.v5.json'), v('NewLanguage'))
         check(v('LabelsOK'), '1', 'saveFailed', 'AP410')
         old_labels = read(LABELS)
         old = w.if_has(old_labels)
-        save(old_labels, 'labels.previous.v4.json')
+        save(old_labels, 'labels.previous.v5.json')
         w.end_if(old)
         save(v('NextStrings'), LABELS)
         labels_candidate(read(LABELS), v('NewLanguage'))
@@ -327,6 +483,7 @@ def build():
         w.set('Language', v('NewLanguage'))
         w.set('Strings', v('CachedStrings'))
         w.assign('LanguageReady', '1')
+        w.assign('LabelsFound', '1')
 
     def name_check(name, current_id):
         w.assign('NameOK', '0')
@@ -342,11 +499,23 @@ def build():
         w.end_loop(loop)
         w.end_if(good)
 
+    def ordinal(number):
+        return w.first(w.match(text('000000', number), r'[0-9]{6}\z'))
+
+    def append_order(identifier):
+        w.set('OrderKeys', w.keys(v('Order')))
+        w.append('OrderKeys', identifier)
+        w.set('Order', put(v('Order'), identifier, ordinal(w.count(v('OrderKeys')))))
+
     def commit_app():
         w.set('Names', put(v('Names'), v('EditID'), v('EditName')))
         w.set('Bundles', put(v('Bundles'), v('EditID'), v('EditBundle')))
         w.set('Stores', put(v('Stores'), v('EditID'), v('EditStore')))
         w.set('Pins', put(v('Pins'), v('EditID'), v('EditPin')))
+        known = exists_key(v('Order'), v('EditID'))
+        w.otherwise(known)
+        append_order(v('EditID'))
+        w.end_if(known)
         request_save()
 
     def ask(prompt, default=None):
@@ -396,32 +565,99 @@ def build():
         w.end_if(found)
         w.end_if(correct)
 
-    def validate_import():
-        """Expensive semantic validation is confined to imports, not every launch."""
-        w.assign('ImportOK', '1')
-        w.empty_dict('ImportNamesSeen')
-        names = v('CandidateNames')
-        loop, identifier = w.each(w.keys(names))
-        w.set('ImportID', identifier)
-        guards = [w.if_match(identifier, r'\A[0-9a-f]{64}\z')]
-        for field in ('bundles', 'stores', 'pins'):
-            guards.append(exists_key(v('Candidate' + field.title()), identifier))
-        bundle = text(get(v('CandidateBundles'), identifier))
-        name = text(get(names, identifier))
-        guards.append(w.if_match(bundle, BUNDLE))
-        guards.append(w.if_eq(w.hash(bundle), identifier))
-        guards.append(w.if_match(name, NAME))
-        guards.append(w.if_match(get(v('CandidatePins'), identifier), r'\A[01]\z'))
-        guards.append(w.if_match(get(v('CandidateStores'), identifier), r'\A\z|' + STORE))
-        duplicate = exists_key(v('ImportNamesSeen'), w.hash(name))
-        w.assign('ImportOK', '0')
-        w.end_if(duplicate)
-        w.set('ImportNamesSeen', put(v('ImportNamesSeen'), w.hash(name), '1'))
+    def import_records():
+        """Classify records without changing the live app maps."""
+        w.empty_dict('InvalidIDs')
+        w.empty_dict('ImportedNameOwners')
+        w.assign('ImportLegacy', '0')
+        w.empty_list('BadImportRows')
+        w.assign('ImportParsed', '0')
+        candidate(v('ImportText'))
+        modern = w.if_eq(v('CandidateOK'), '1')
+        w.set('ImportLanguage', get(v('Candidate'), 'language'))
+        for collection in MAPS:
+            w.set('Raw' + collection, v('Candidate' + collection))
+        w.assign('ImportParsed', '1')
+        w.otherwise(modern)
+        flat = w.if_match(v('ImportText'), FLAT_PATTERN)
+        raw = a('detect.dictionary', {'WFInput': ref(v('ImportText'))}, 'Original app-list JSON')
+        w.assign('ImportLegacy', '1')
+        w.assign('ImportParsed', '1')
+        w.set('ImportLanguage', v('Language'))
+        for collection in MAPS:
+            w.empty_dict('Raw' + collection)
+        loop, name = w.each(w.keys(raw))
+        bundle = text(get(raw, name))
+        guards = [w.if_match(bundle, BUNDLE), w.if_match(name, NAME)]
+        identifier = w.hash(bundle)
+        alias = exists_key(v('RawNames'), identifier)
+        w.set('InvalidIDs', put(v('InvalidIDs'), identifier, text('1')))
+        w.append('BadImportRows', name)
+        w.otherwise(alias)
+        for collection, value in [('Names', name), ('Bundles', bundle), ('Stores', ''), ('Pins', '0'), ('Order', '000000')]:
+            w.set('Raw' + collection, put(v('Raw' + collection), identifier, value if isinstance(value, dict) else text(value)))
+        w.end_if(alias)
         for group in reversed(guards):
             w.otherwise(group)
-            w.assign('ImportOK', '0')
+            w.append('BadImportRows', name)
             w.end_if(group)
         w.end_loop(loop)
+        w.end_if(flat)
+        w.end_if(modern)
+        parsed = w.if_eq(v('ImportParsed'), '1')
+        loop, identifier = w.each(w.keys(v('RawNames')))
+        guards = [w.if_match(identifier, r'\A[0-9a-f]{64}\z')]
+        for collection in MAPS[1:]:
+            guards.append(exists_key(v('Raw' + collection), identifier))
+        name = text(get(v('RawNames'), identifier))
+        bundle = text(get(v('RawBundles'), identifier))
+        guards.append(w.if_match(name, NAME))
+        guards.append(w.if_match(bundle, BUNDLE))
+        guards.append(w.if_eq(w.hash(bundle), identifier))
+        guards.append(w.if_match(get(v('RawPins'), identifier), r'\A[01]\z'))
+        guards.append(w.if_match(get(v('RawStores'), identifier), r'\A\z|' + STORE))
+        guards.append(w.if_match(get(v('RawOrder'), identifier), r'\A[0-9]{6}\z'))
+        name_key = w.hash(name)
+        duplicate_name = exists_key(v('ImportedNameOwners'), name_key)
+        previous_id = text(get(v('ImportedNameOwners'), name_key))
+        w.set('InvalidIDs', put(v('InvalidIDs'), previous_id, text('1')))
+        w.set('InvalidIDs', put(v('InvalidIDs'), identifier, text('1')))
+        w.otherwise(duplicate_name)
+        w.set('ImportedNameOwners', put(v('ImportedNameOwners'), name_key, identifier))
+        w.end_if(duplicate_name)
+        for group in reversed(guards):
+            w.otherwise(group)
+            w.set('InvalidIDs', put(v('InvalidIDs'), identifier, text('1')))
+            w.end_if(group)
+        w.end_loop(loop)
+        for collection in MAPS:
+            w.empty_dict('Import' + collection)
+        loop, identifier = w.each(w.keys(v('RawNames')))
+        invalid = exists_key(v('InvalidIDs'), identifier)
+        w.append('BadImportRows', text(get(v('RawNames'), identifier)))
+        w.otherwise(invalid)
+        for collection in MAPS:
+            w.set('Import' + collection, put(v('Import' + collection), identifier, get(v('Raw' + collection), identifier)))
+        w.end_if(invalid)
+        w.end_loop(loop)
+        w.empty_dict('ExistingNameOwners')
+        loop, identifier = w.each(w.keys(v('Names')))
+        w.set('ExistingNameOwners', put(v('ExistingNameOwners'), w.hash(get(v('Names'), identifier)), identifier))
+        w.end_loop(loop)
+        for name in ('NewImportIDs', 'DuplicateImportIDs', 'ConflictImportIDs'):
+            w.empty_list(name)
+        loop, identifier = w.each(w.keys(v('ImportNames')))
+        exists = exists_key(v('Names'), identifier)
+        w.append('DuplicateImportIDs', identifier)
+        w.otherwise(exists)
+        collision = exists_key(v('ExistingNameOwners'), w.hash(get(v('ImportNames'), identifier)))
+        w.append('ConflictImportIDs', identifier)
+        w.otherwise(collision)
+        w.append('NewImportIDs', identifier)
+        w.end_if(collision)
+        w.end_if(exists)
+        w.end_loop(loop)
+        w.end_if(parsed)
 
     resources = a('dictionary', {'WFItems': dictionary_value(boot)}, 'AppList Pro configuration')
     top_index = len(w.actions) - 1
@@ -433,14 +669,21 @@ def build():
     w.set('StorageRoot', a('file', {'WFFile': FOLDER}, 'Portable iCloud Shortcuts folder'))
     for var in ('ActiveDigest', 'ActiveEnvelope', 'DiskDigest', 'Language', 'SharedLink'):
         w.assign(var, '0')
-    for var in ('Names', 'Bundles', 'Stores', 'Pins'):
+    for var in MAPS:
         w.empty_dict(var)
+    w.assign('RowsReady', '0')
+    w.assign('LabelsFound', '0')
+    w.assign('Migrating', '0')
     w.assign('ActiveValid', '0')
     w.assign('LanguageReady', '0')
     w.assign('PendingImport', '0')
     w.assign('Route', 'configure')
     w.assign('Recovered', '0')
     active_file = read(ACTIVE)
+    w.assign('InitialDiskPresent', '0')
+    present = w.if_text(a('detect.text', {'WFInput': ref(active_file)}, 'Initial data-file presence'))
+    w.assign('InitialDiskPresent', '1')
+    w.end_if(present)
     candidate(active_file)
     ready = w.if_eq(v('CandidateOK'), '1')
     w.set('ActiveEnvelope', v('CandidateEnvelope'))
@@ -459,6 +702,34 @@ def build():
     some_file = w.if_text(text(active_file, previous_file))
     w.alert(L('invalidData'), title=TITLE)
     w.assign('Route', 'recover')
+    w.otherwise(some_file)
+    w.assign('LegacyFilesPresent', '0')
+    legacy_files = a('list', {'WFItems': [{'WFItemType': 0, 'WFValue': token(name)} for name in
+        ('apps.v4.json', 'apps.previous.v4.json')]}, 'Beta4 migration preference')
+    loop, filename = w.each(legacy_files)
+    missing = w.if_eq(v('ActiveValid'), '0')
+    w.set('LegacyStateFile', read(filename))
+    present = w.if_text(a('detect.text', {'WFInput': ref(v('LegacyStateFile'))}, 'Read beta4 contents'))
+    w.assign('LegacyFilesPresent', '1')
+    w.end_if(present)
+    candidate(v('LegacyStateFile'))
+    legacy = w.if_eq(v('CandidateOK'), '1')
+    w.set('ActiveEnvelope', v('CandidateEnvelope'))
+    w.set('ActiveDigest', v('CandidateDigest'))
+    w.assign('ActiveValid', '1')
+    w.assign('Migrating', '1')
+    recovered_legacy = w.if_eq(filename, 'apps.previous.v4.json')
+    w.assign('Recovered', '1')
+    w.end_if(recovered_legacy)
+    w.end_if(legacy)
+    w.end_if(missing)
+    w.end_loop(loop)
+    missing = w.if_eq(v('ActiveValid'), '0')
+    found = w.if_eq(v('LegacyFilesPresent'), '1')
+    w.alert(L('invalidData'), title=TITLE)
+    w.assign('Route', 'recover')
+    w.end_if(found)
+    w.end_if(missing)
     w.end_if(some_file)
     w.end_if(previous)
     w.end_if(ready)
@@ -469,6 +740,15 @@ def build():
     recovered = w.if_eq(v('Recovered'), '1')
     w.alert(L('recovered'), title=TITLE)
     w.end_if(recovered)
+    migration = w.if_eq(v('Migrating'), '1')
+    labels = w.if_eq(v('LabelsFound'), '1')
+    upgraded = put(v('Strings'), text('_dataVersion'), get(v('Config'), 'dataVersion'))
+    save(upgraded, LABELS)
+    labels_candidate(read(LABELS), v('Language'))
+    check(v('LabelsOK'), '1', 'saveFailed', 'AP5 language migration')
+    w.end_if(labels)
+    request_save(message='')
+    w.end_if(migration)
     w.end_if(loaded)
     # Only process incoming content when explicitly launched from a share sheet.
     incoming = {'Type': 'ExtensionInput'}
@@ -479,6 +759,10 @@ def build():
     shared_valid = w.if_match(v('SharedLink'), STORE)
     loaded = w.if_eq(v('ActiveValid'), '1')
     w.assign('Route', 'shared')
+    migrating = w.if_eq(v('Migrating'), '1')
+    w.assign('Route', 'save')
+    w.assign('AfterSave', 'shared')
+    w.end_if(migrating)
     w.end_if(loaded)
     w.otherwise(shared_valid)
     w.assign('SharedLink', '')
@@ -490,6 +774,7 @@ def build():
     w.set('PassRoute', v('Route'))
     setup = w.if_eq(v('PassRoute'), 'configure')
     choose_language()
+    w.assign('LanguageReturn', 'main')
     w.assign('LanguageSaveMessage', '')
     w.assign('Route', 'fetchLanguage')
     w.end_if(setup)
@@ -497,7 +782,7 @@ def build():
     recovery = w.if_eq(v('PassRoute'), 'recover')
     start_menu()
     row(text('📂 ', L('import')), text('import'))
-    row(text('🆕 New list / Danh sách mới'), text('configure'))
+    row(text('🆕 ', L('newList')), text('configure'))
     row(text('✖ ', L('cancel')), text('cancel'))
     w.set('Route', finish(text(TITLE)))
     w.end_if(recovery)
@@ -523,9 +808,8 @@ def build():
     w.end_if(main)
 
     manage = w.if_eq(v('PassRoute'), 'manage')
-    w.set('Route', menu([('➕', 'add', 'add'), ('✏️', 'edit', 'pickEdit'), ('🗑️', 'delete', 'pickDelete'),
-        ('🛍️', 'store', 'store'), ('🌐', 'language', 'language'), ('💾', 'backups', 'backups'),
-        ('ℹ️', 'info', 'info'), ('↩️', 'back', 'main')]))
+    w.set('Route', menu([('➕', 'add', 'add'), ('✏️', 'edit', 'pickEdit'),
+        ('💾', 'backups', 'backups'), ('🌐', 'language', 'language'), ('ℹ️', 'info', 'info'), ('↩️', 'back', 'main')]))
     w.end_if(manage)
 
     adding = w.if_match(v('PassRoute'), r'\A(?:add|shared)\z')
@@ -573,7 +857,7 @@ def build():
     w.end_if(found)
     w.end_if(adding)
 
-    picking = w.if_match(v('PassRoute'), r'\A(?:pickEdit|pickDelete)\z')
+    picking = w.if_eq(v('PassRoute'), 'pickEdit')
     any_apps = w.if_has(w.keys(v('Names')))
     app_rows(back=True)
     choice = finish(L('chooseApp'))
@@ -581,11 +865,7 @@ def build():
     w.set('EditID', choice)
     for var, source in [('EditName', 'Names'), ('EditBundle', 'Bundles'), ('EditStore', 'Stores'), ('EditPin', 'Pins')]:
         w.set(var, get(v(source), v('EditID')))
-    deleting = w.if_eq(v('PassRoute'), 'pickDelete')
-    w.assign('Route', 'delete')
-    w.otherwise(deleting)
     w.assign('Route', 'edit')
-    w.end_if(deleting)
     w.otherwise(picked)
     w.assign('Route', 'manage')
     w.end_if(picked)
@@ -603,9 +883,10 @@ def build():
     start_menu()
     row(text('✏️ ', L('rename')), text('rename'))
     row(text('⭐ ', get(v('Strings'), v('PinLabel'))), text('pin'))
+    row(text('↕️ ', L('position')), text('position'))
     row(text('🛍️ ', L('store')), text('itemStore'))
     row(text('🗑️ ', L('delete')), text('delete'))
-    row(text('↩️ ', L('back')), text('manage'))
+    row(text('↩️ ', L('back')), text('pickEdit'))
     w.set('Route', finish(v('EditName')))
     w.end_if(editing)
 
@@ -628,54 +909,104 @@ def build():
     commit_app()
     w.end_if(pinning)
 
+    positioning = w.if_eq(v('PassRoute'), 'position')
+    sorted_ids()
+    w.empty_list('PositionGroup')
+    loop, identifier = w.each(v('SortedIDs'))
+    same_group = w.if_eq(get(v('Pins'), identifier), v('EditPin'))
+    w.append('PositionGroup', identifier)
+    w.end_if(same_group)
+    w.end_loop(loop)
+    w.set('GroupCount', w.count(v('PositionGroup')))
+    w.set('DesiredPosition', w.replace(ask(text(L('positionPrompt'), ' (1–', v('GroupCount'), ')\n', v('EditName'))), r'\A\s+|\s+\z', ''))
+    w.assign('PositionOK', '0')
+    numeric = w.if_match(v('DesiredPosition'), r'\A[1-9][0-9]{0,5}\z')
+    too_large = w.if_gt(v('DesiredPosition'), v('GroupCount'))
+    w.otherwise(too_large)
+    w.assign('PositionOK', '1')
+    w.end_if(too_large)
+    w.end_if(numeric)
+    valid = w.if_eq(v('PositionOK'), '1')
+    w.empty_list('OtherPositions')
+    loop, identifier = w.each(v('PositionGroup'))
+    selected = w.if_eq(identifier, v('EditID'))
+    w.otherwise(selected)
+    w.append('OtherPositions', identifier)
+    w.end_if(selected)
+    w.end_loop(loop)
+    w.empty_list('NewPositions')
+    w.empty_list('PositionCounter')
+    loop, identifier = w.each(v('OtherPositions'))
+    w.append('PositionCounter', text('1'))
+    at_position = w.if_eq(w.count(v('PositionCounter')), v('DesiredPosition'))
+    w.append('NewPositions', v('EditID'))
+    w.end_if(at_position)
+    w.append('NewPositions', identifier)
+    w.end_loop(loop)
+    last = w.if_eq(v('DesiredPosition'), v('GroupCount'))
+    w.append('NewPositions', v('EditID'))
+    w.end_if(last)
+    w.empty_list('PositionCounter')
+    loop, identifier = w.each(v('NewPositions'))
+    w.append('PositionCounter', text('1'))
+    w.set('Order', put(v('Order'), identifier, ordinal(w.count(v('PositionCounter')))))
+    w.end_loop(loop)
+    request_save()
+    w.otherwise(valid)
+    w.alert(L('badPosition'), title=TITLE)
+    w.assign('Route', 'edit')
+    w.end_if(valid)
+    w.end_if(positioning)
+
     deleting = w.if_eq(v('PassRoute'), 'delete')
     confirmed = menu([('🗑️', 'delete', 'confirm'), ('↩️', 'back', 'back')], text(L('deleteConfirm'), '\n\n', v('EditName')))
     yes = w.if_eq(confirmed, 'confirm')
-    for name in ('Names', 'Bundles', 'Stores', 'Pins'):
+    for name in MAPS:
         w.empty_dict('New' + name)
     loop, identifier = w.each(w.keys(v('Names')))
     selected = w.if_eq(identifier, v('EditID'))
     w.otherwise(selected)
-    for name in ('Names', 'Bundles', 'Stores', 'Pins'):
+    for name in MAPS:
         w.set('New' + name, put(v('New' + name), identifier, get(v(name), identifier)))
     w.end_if(selected)
     w.end_loop(loop)
-    for name in ('Names', 'Bundles', 'Stores', 'Pins'):
+    for name in MAPS:
         w.set(name, v('New' + name))
     request_save(message='removed')
     w.otherwise(yes)
-    w.assign('Route', 'manage')
+    w.assign('Route', 'edit')
     w.end_if(yes)
     w.end_if(deleting)
 
-    for route in ('store', 'itemStore'):
-        opening_store = w.if_eq(v('PassRoute'), route)
-        if route == 'store':
-            search_app()
-            found = w.if_eq(v('AppFound'), '1')
-        else:
-            found = w.if_match(v('EditStore'), STORE)
-        good_url = w.if_match(v('EditStore'), STORE)
-        a('openurl', {'WFInput': ref(v('EditStore'))}, 'Open App Store page')
-        a('exit')
-        w.end_if(good_url)
-        w.otherwise(found)
-        w.alert(L('noResults' if route == 'store' else 'missingStore'), title=TITLE)
-        w.end_if(found)
-        w.assign('Route', 'manage')
-        w.end_if(opening_store)
+    opening_store = w.if_eq(v('PassRoute'), 'itemStore')
+    found = w.if_match(v('EditStore'), STORE)
+    a('openurl', {'WFInput': ref(v('EditStore'))}, 'Open App Store page')
+    a('exit')
+    w.otherwise(found)
+    w.alert(L('missingStore'), title=TITLE)
+    w.assign('Route', 'edit')
+    w.end_if(found)
+    w.end_if(opening_store)
 
     lang = w.if_eq(v('PassRoute'), 'language')
     choose_language()
+    w.assign('LanguageReturn', 'manage')
     w.assign('LanguageSaveMessage', '')
     w.assign('Route', 'fetchLanguage')
+    current = w.if_eq(v('NewLanguage'), v('Language'))
+    cached = w.if_eq(v('LabelsFound'), '1')
+    w.assign('Route', 'manage')
+    w.end_if(cached)
+    w.end_if(current)
     w.end_if(lang)
     reload_lang = w.if_eq(v('PassRoute'), 'reload')
     w.set('NewLanguage', v('Language'))
+    w.assign('LanguageReturn', 'backups')
     w.assign('LanguageSaveMessage', 'saved')
     w.assign('Route', 'fetchLanguage')
     w.end_if(reload_lang)
     fetch = w.if_eq(v('PassRoute'), 'fetchLanguage')
+    w.set('PreviousLanguage', v('Language'))
     fetch_language()
     pending_import = w.if_eq(v('PendingImport'), '1')
     # Selecting a language for a pending import never writes an empty app list.
@@ -683,16 +1014,54 @@ def build():
     w.otherwise(pending_import)
     request_save(message='')
     w.set('SaveMessage', v('LanguageSaveMessage'))
+    w.set('AfterSave', v('LanguageReturn'))
     pending = w.if_match(v('SharedLink'), STORE)
     w.assign('AfterSave', 'shared')
     w.end_if(pending)
+    same_language = w.if_eq(v('PreviousLanguage'), v('NewLanguage'))
+    existing = w.if_eq(v('ActiveValid'), '1')
+    w.set('Route', v('LanguageReturn'))
+    w.notify('saved')
+    w.end_if(existing)
+    w.end_if(same_language)
     w.end_if(pending_import)
     w.end_if(fetch)
 
     backups = w.if_eq(v('PassRoute'), 'backups')
     w.set('Route', menu([('📤', 'export', 'export'), ('📂', 'import', 'import'),
-        ('↶', 'restore', 'restore'), ('🔄', 'update', 'reload'), ('↩️', 'back', 'manage')]))
+        ('↶', 'history', 'history'), ('🔄', 'update', 'reload'), ('↩️', 'back', 'manage')]))
     w.end_if(backups)
+    history = w.if_eq(v('PassRoute'), 'history')
+    start_menu()
+    w.empty_dict('HistorySeen')
+    w.empty_list('HistoryCounter')
+    choices = a('list', {'WFItems': [{'WFItemType': 0, 'WFValue': token(name)} for name in (*HISTORY, PREVIOUS)]}, 'Available restore points')
+    loop, filename = w.each(choices)
+    candidate(read(filename))
+    valid = w.if_eq(v('CandidateOK'), '1')
+    duplicate = exists_key(v('HistorySeen'), v('CandidateDigest'))
+    w.otherwise(duplicate)
+    w.set('HistorySeen', put(v('HistorySeen'), v('CandidateDigest'), text('1')))
+    w.append('HistoryCounter', text('1'))
+    row(text(w.count(v('HistoryCounter')), ' · ', v('CandidateSavedAt'), ' · ', w.count(w.keys(v('CandidateNames'))), ' ', L('appsCount')), filename)
+    w.end_if(duplicate)
+    w.end_if(valid)
+    w.end_loop(loop)
+    available = w.if_has(v('Rows'))
+    row(text('↩️ ', L('back')), text('back'))
+    chosen = finish(L('history'))
+    back = w.if_eq(chosen, 'back')
+    w.assign('Route', 'backups')
+    w.otherwise(back)
+    w.set('RestoreFile', chosen)
+    w.assign('Route', 'restore')
+    w.end_if(back)
+    w.otherwise(available)
+    w.alert(L('emptyHistory'), title=TITLE)
+    w.assign('Route', 'backups')
+    w.end_if(available)
+    w.end_if(history)
+
     export = w.if_eq(v('PassRoute'), 'export')
     file = w.named_json(text(v('ActiveEnvelope')), 'AppListPro-backup.json')
     a('documentpicker.save', {'WFInput': ref(file), 'WFAskWhereToSave': True,
@@ -708,7 +1077,7 @@ def build():
     resumed_import = w.if_eq(v('PassRoute'), 'importReady')
     w.otherwise(resumed_import)
     restoration = w.if_eq(v('PassRoute'), 'restore')
-    w.set('ImportText', text(read(PREVIOUS)))
+    w.set('ImportText', text(a('detect.text', {'WFInput': ref(read(v('RestoreFile')))}, 'Read chosen restore point')))
     w.otherwise(restoration)
     selected_file = a('file.select', {'SelectMultiple': False}, 'Choose backup or legacy JSON')
     selected_text = a('detect.text', {'WFInput': ref(selected_file)}, 'Read selected JSON contents')
@@ -716,72 +1085,85 @@ def build():
     w.end_if(restoration)
     w.end_if(resumed_import)
     w.assign('PendingImport', '0')
-    candidate(v('ImportText'))
-    modern = w.if_eq(v('CandidateOK'), '1')
-    validate_import()
-    valid = w.if_eq(v('ImportOK'), '1')
-    confirmed = menu([('✅', 'import', 'confirm'), ('↩️', 'back', 'back')], L('replaceConfirm'))
-    yes = w.if_eq(confirmed, 'confirm')
-    bind()
-    load_labels()
-    request_save()
-    w.otherwise(yes)
-    w.set('Route', v('ImportReturn'))
-    w.end_if(yes)
-    w.otherwise(valid)
-    w.alert(L('invalidData'), title=TITLE)
-    w.set('Route', v('ImportReturn'))
-    w.end_if(valid)
-    w.otherwise(modern)
-    # Legacy format: {displayName: bundleID}. Preserve the original file.
-    flat = w.if_match(v('ImportText'), FLAT_PATTERN)
+    import_records()
+    parsed = w.if_eq(v('ImportParsed'), '1')
     configured = w.if_eq(v('LanguageReady'), '1')
-    legacy = a('detect.dictionary', {'WFInput': ref(v('ImportText'))}, 'Legacy app list')
-    for var in ('LegacyNames', 'LegacyBundles', 'LegacyStores', 'LegacyPins'):
-        w.empty_dict(var)
-    w.assign('LegacyOK', '1')
-    loop, name = w.each(w.keys(legacy))
-    bundle = text(get(legacy, name))
-    valid_bundle = w.if_match(bundle, BUNDLE)
-    valid_name = w.if_match(name, NAME)
-    identifier = w.hash(bundle)
-    already = exists_key(v('LegacyNames'), identifier)
-    # Ambiguous aliases are rejected together, never silently discarded.
-    w.assign('LegacyOK', '0')
-    w.otherwise(already)
-    for target, value in [('LegacyNames', name), ('LegacyBundles', bundle), ('LegacyStores', ''), ('LegacyPins', '0')]:
-        w.set(target, put(v(target), identifier, value))
-    w.end_if(already)
-    w.otherwise(valid_name)
-    w.assign('LegacyOK', '0')
-    w.end_if(valid_name)
-    w.otherwise(valid_bundle)
-    w.assign('LegacyOK', '0')
-    w.end_if(valid_bundle)
-    w.end_loop(loop)
-    okay = w.if_eq(v('LegacyOK'), '1')
-    confirmed = menu([('✅', 'import', 'confirm'), ('↩️', 'back', 'back')], L('replaceConfirm'))
-    yes = w.if_eq(confirmed, 'confirm')
-    save(v('ImportText'), 'legacy-import-original.json')
-    for target, source in [('Names', 'LegacyNames'), ('Bundles', 'LegacyBundles'), ('Stores', 'LegacyStores'), ('Pins', 'LegacyPins')]:
-        w.set(target, v(source))
-    request_save()
-    w.otherwise(yes)
-    w.set('Route', v('ImportReturn'))
-    w.end_if(yes)
-    w.otherwise(okay)
-    w.alert(L('invalidData'), title=TITLE)
-    w.set('Route', v('ImportReturn'))
-    w.end_if(okay)
     w.otherwise(configured)
+    modern = w.if_eq(v('ImportLegacy'), '0')
+    w.set('Language', v('ImportLanguage'))
+    w.assign('LanguageReady', '1')
+    load_labels()
+    w.otherwise(modern)
     w.assign('PendingImport', '1')
     w.assign('Route', 'configure')
+    w.end_if(modern)
     w.end_if(configured)
-    w.otherwise(flat)
+    ready = w.if_eq(v('LanguageReady'), '1')
+    summary = text(L('preview'), '\n\n', L('validItems'), ': ', w.count(w.keys(v('ImportNames'))),
+        '\n', L('newItems'), ': ', w.count(v('NewImportIDs')),
+        '\n', L('duplicates'), ': ', w.count(v('DuplicateImportIDs')),
+        '\n', L('invalidItems'), ': ', w.count(v('BadImportRows')),
+        '\n', L('conflicts'), ': ', w.count(v('ConflictImportIDs')))
+    w.assign('ImportMode', 'back')
+    restoring = w.if_eq(v('PassRoute'), 'restore')
+    clean = w.if_eq(w.count(v('BadImportRows')), '0')
+    w.set('ImportMode', menu([('✅', 'restore', 'confirm'), ('↩️', 'back', 'back')], text(summary, '\n\n', L('replaceConfirm'))))
+    w.otherwise(clean)
+    w.alert(text(summary, '\n\n', L('invalidData')), title=TITLE)
+    w.end_if(clean)
+    w.otherwise(restoring)
+    # Never turn a wholly invalid file into an accidental empty replacement.
+    w.assign('CanPreview', '1')
+    empty = w.if_eq(w.count(w.keys(v('ImportNames'))), '0')
+    invalid = w.if_has(v('BadImportRows'))
+    w.assign('CanPreview', '0')
+    w.end_if(invalid)
+    w.end_if(empty)
+    preview = w.if_eq(v('CanPreview'), '1')
+    w.set('ImportMode', menu([('➕', 'merge', 'merge'), ('↻', 'replace', 'replace'), ('↩️', 'back', 'back')], summary))
+    replacing = w.if_eq(v('ImportMode'), 'replace')
+    w.set('ImportMode', menu([('✅', 'replace', 'confirm'), ('↩️', 'back', 'back')], text(L('replaceConfirm'), '\n\n', w.count(w.keys(v('ImportNames'))), ' ', L('appsCount'))))
+    w.end_if(replacing)
+    w.otherwise(preview)
+    w.alert(text(summary, '\n\n', L('invalidData')), title=TITLE)
+    w.end_if(preview)
+    w.end_if(restoring)
+    w.assign('ImportApplied', '0')
+    confirmed = w.if_eq(v('ImportMode'), 'confirm')
+    for collection in MAPS:
+        w.set(collection, v('Import' + collection))
+    restore_language = w.if_eq(v('PassRoute'), 'restore')
+    w.set('Language', v('ImportLanguage'))
+    load_labels()
+    w.end_if(restore_language)
+    w.assign('ImportApplied', '1')
+    w.end_if(confirmed)
+    merging = w.if_eq(v('ImportMode'), 'merge')
+    has_new = w.if_has(v('NewImportIDs'))
+    loop, identifier = w.each(v('NewImportIDs'))
+    append_order(identifier)
+    for collection in MAPS[:4]:
+        w.set(collection, put(v(collection), identifier, get(v('Import' + collection), identifier)))
+    w.end_loop(loop)
+    w.assign('ImportApplied', '1')
+    w.otherwise(has_new)
+    w.alert(L('noChanges'), title=TITLE)
+    w.end_if(has_new)
+    w.end_if(merging)
+    applied = w.if_eq(v('ImportApplied'), '1')
+    legacy = w.if_eq(v('ImportLegacy'), '1')
+    a('file.createfolder', {'WFFolder': ref(v('StorageRoot')), 'WFFilePath': 'AppListPro'})
+    save(v('ImportText'), 'legacy-import-original.json')
+    w.end_if(legacy)
+    request_save()
+    w.otherwise(applied)
+    w.set('Route', v('ImportReturn'))
+    w.end_if(applied)
+    w.end_if(ready)
+    w.otherwise(parsed)
     w.alert(L('invalidData'), title=TITLE)
     w.set('Route', v('ImportReturn'))
-    w.end_if(flat)
-    w.end_if(modern)
+    w.end_if(parsed)
     w.end_if(importing)
 
     saving = w.if_eq(v('PassRoute'), 'save')
@@ -795,7 +1177,7 @@ def build():
     w.end_if(saving)
 
     info = w.if_eq(v('PassRoute'), 'info')
-    w.alert(text('AppList Pro ', get(v('Config'), 'version'), '\n\n', L('infoBody')), title=TITLE)
+    w.alert(text('AppList Pro ', get(v('Config'), 'version'), '\n\n', L('infoBody'), '\n\n', L('upgradeInfo')), title=TITLE)
     w.assign('Route', 'manage')
     w.end_if(info)
     cancel = w.if_eq(v('PassRoute'), 'cancel')
@@ -806,7 +1188,7 @@ def build():
     boot['values'] = w.constants
     w.actions[top_index]['WFWorkflowActionParameters']['WFItems'] = dictionary_value(boot)
     workflow = w.header()
-    workflow['WFWorkflowName'] = 'AppList Pro beta4'
+    workflow['WFWorkflowName'] = 'AppList Pro beta5'
     workflow['WFWorkflowInputContentItemClasses'] = ['WFURLContentItem']
     workflow['WFWorkflowIcon'] = {'WFWorkflowIconStartColor': 431817727, 'WFWorkflowIconGlyphNumber': 59700}
     return workflow

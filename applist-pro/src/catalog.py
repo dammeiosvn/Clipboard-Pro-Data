@@ -5,8 +5,9 @@ import hashlib
 import json
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '1.1.0-beta.4'
-DATA_VERSION = '1.1.0-beta.1'
+VERSION = '1.1.0-beta.5'
+DATA_VERSION = '1.1.0-beta.5'
+LEGACY_DATA_VERSION = '1.1.0-beta.1'
 BASE_URL = 'https://raw.githubusercontent.com/dammeiosvn/Clipboard-Pro-Data/main/applist-pro/releases/' + DATA_VERSION + '/'
 LANGUAGES = {
     'vi': 'Tiếng Việt', 'en': 'English', 'en-GB': 'English (UK)',
@@ -16,7 +17,17 @@ LANGUAGES = {
     'pt-BR': 'Português (Brasil)', 'hi': 'हिन्दी', 'ar': 'العربية',
     'nl': 'Nederlands', 'pl': 'Polski',
 }
-KEYS = 'manage add edit delete store language backups info back search paste rename pin unpin export import restore update cancel searchPrompt chooseApp namePrompt linkPrompt empty noResults exists badName invalidData saveFailed changedElsewhere missingStore added removed saved deleteConfirm replaceConfirm recovered infoBody'.split()
+BASE_KEYS = 'manage add edit delete store language backups info back search paste rename pin unpin export import restore update cancel searchPrompt chooseApp namePrompt linkPrompt empty noResults exists badName invalidData saveFailed changedElsewhere missingStore added removed saved deleteConfirm replaceConfirm recovered infoBody'.split()
+EXTRA_KEYS = 'position positionPrompt badPosition preview merge replace validItems newItems duplicates invalidItems conflicts noChanges history emptyHistory appsCount upgradeInfo newList'.split()
+KEYS = BASE_KEYS + EXTRA_KEYS
+
+
+def strings_catalog():
+    base = json.loads((ROOT / 'config/strings.json').read_text())
+    extensions = json.loads((ROOT / 'config/extensions.json').read_text())
+    assert set(base) == set(extensions) == set(LANGUAGES)
+    return {code: {**base[code], **extensions[code]} for code in LANGUAGES}
+
 
 
 def compact(value):
@@ -33,7 +44,7 @@ def package(strings):
 
 
 def publish():
-    catalog = json.loads((ROOT / 'config/strings.json').read_text())
+    catalog = strings_catalog()
     assert set(catalog) == set(LANGUAGES)
     out = ROOT / 'releases' / DATA_VERSION
     out.mkdir(parents=True, exist_ok=True)

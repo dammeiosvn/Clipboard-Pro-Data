@@ -8,7 +8,7 @@ import sys
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-SIGNED = ROOT / 'dist/AppList-Pro-1.1-beta4.shortcut'
+SIGNED = ROOT / 'dist/AppList-Pro-1.1-beta5.shortcut'
 
 
 def walk(value):

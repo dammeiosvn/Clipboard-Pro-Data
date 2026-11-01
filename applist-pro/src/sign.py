@@ -21,7 +21,7 @@ def main():
     assert plistlib.loads(raw) == plistlib.loads((ROOT / 'dist/AppList-Pro.unsigned.shortcut').read_bytes())
     boundary = 'AppListPro-' + uuid.uuid4().hex
     header = ('--' + boundary + '\r\nContent-Disposition: form-data; name="file"; '
-              'filename="AppList-Pro.shortcut"\r\nContent-Type: application/octet-stream\r\n\r\n').encode()
+              'filename="AppList-Pro-beta5.shortcut"\r\nContent-Type: application/octet-stream\r\n\r\n').encode()
     body = header + raw + ('\r\n--' + boundary + '--\r\n').encode()
     request = urllib.request.Request(ENDPOINT, data=body, headers={
         'Content-Type': 'multipart/form-data; boundary=' + boundary,
@@ -35,7 +35,7 @@ def main():
     assert item['signed_sha256'] == hashlib.sha256(content).hexdigest()
     assert item['format'] == 'AEA1' and item['signing_mode'] == 'anyone'
     assert content.startswith(b'AEA1') and len(content) == item['size']
-    dest = ROOT / 'dist/AppList-Pro-1.1-beta4.shortcut'
+    dest = ROOT / 'dist/AppList-Pro-1.1-beta5.shortcut'
     dest.write_bytes(content)
     report = {'signed': True, 'format': 'AEA1', 'mode': 'anyone', 'bytes': len(content),
               'sha256': item['signed_sha256'], 'inputSHA256': item['input_sha256'],

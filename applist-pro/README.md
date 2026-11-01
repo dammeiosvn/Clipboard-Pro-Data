@@ -1,111 +1,132 @@
 # AppList Pro
 
-© Sentechtipsvn · 1.1.0-beta.4
+© Sentechtipsvn · 1.1.0-beta.5
 
-A native iOS quick launcher. Apps appear on the first screen, pinned apps first,
-with **Manage** at the bottom. Opening an app does not require a management menu.
-Normal launches make no HTTP request and write no file.
+Native iOS quick launcher. The first screen is the app list, pinned apps first,
+with **Manage** at the bottom. Tap an app to open it. Normal launches make no HTTP
+request and write no file. Community-facing text uses the selected language.
 
-Bản cài đã ký được bàn giao dưới tên `AppList-Pro-1.1-beta4.shortcut`.
+## Nâng cấp từ beta4
 
-## Cài và dùng
+Cài `AppList-Pro-1.1-beta5.shortcut` và chạy. Khi chưa có dữ liệu beta5, phím tắt
+tự nhận danh sách và bộ ngôn ngữ beta4 trên cùng iCloud. Không cần nhập lại hoặc
+tải lại ngôn ngữ nếu bộ lưu beta4 còn hợp lệ. Tệp beta4 được giữ nguyên.
 
-1. Cài tệp beta4; có thể kiểm tra **1.1.0-beta.4** trong Info để phân biệt với
-   các bản trước. Chạy và chọn ngôn ngữ. Lần thiết lập đầu cần mạng.
-2. Chọn **Thêm ứng dụng → Tìm theo tên**, tìm và chọn ứng dụng đã cài. Có thể thêm
-   bằng liên kết App Store hoặc chia sẻ liên kết App Store vào phím tắt.
-3. Chạy lại phím tắt và chạm ứng dụng ngay trên màn hình đầu để mở.
+Dữ liệu beta5 dùng tên tệp mới. Chỉnh sửa trên beta5 không cập nhật ngược danh sách
+beta4. Nếu cả tệp chính và tệp trước của beta5 hỏng, phím tắt mở luồng phục hồi;
+không tự quay về một danh sách beta4 cũ và làm người dùng tưởng đó là dữ liệu mới.
 
-Trong **Quản lý** có thêm, đổi tên, ghim/bỏ ghim, xoá mục, mở trang App Store,
-ngôn ngữ, sao lưu/khôi phục và **Info**. Info chứa phiên bản, giới thiệu tính năng
-và hướng dẫn sử dụng bằng ngôn ngữ đã chọn. Xoá mục không gỡ ứng dụng khỏi iPhone.
-Tìm trên App Store không tự cài ứng dụng. Huỷ hộp thoại sẽ kết thúc phiên.
+Cài mới hoàn toàn: chọn một trong 20 ngôn ngữ, sau đó chọn **Thêm ứng dụng**.
+Tải ngôn ngữ và tìm ứng dụng cần mạng. Mở app dùng dữ liệu lưu sẵn khi các tệp
+iCloud đã có trên máy. Huỷ hộp thoại sẽ kết thúc phiên.
 
-## Nhập danh sách gốc
+## Màn hình và quản lý
 
-Sau khi chọn ngôn ngữ, vào **Quản lý → Sao lưu và khôi phục → Nhập từ tệp**.
-Chọn `iCloud Drive/AppList Pro/AppList_Pro.json` rồi xác nhận. Tệp gốc có dạng
-`{"Tên ứng dụng":"com.example.App"}`. Tệp gốc không bị sửa hay xoá; một bản được
-lưu trong thư mục dữ liệu trước khi chuyển đổi.
+Danh sách app nằm ngoài cùng. Menu Quản lý có sáu mục:
 
-Nhập là thay toàn bộ danh sách. Danh sách hiện tại được sao lưu trước khi thay.
-Tệp có hai tên dùng cùng Bundle ID, tên không hợp lệ hoặc Bundle ID không hợp lệ
-bị từ chối cả lần nhập, tránh bỏ mất mục âm thầm.
+- Thêm ứng dụng
+- Chỉnh sửa danh sách
+- Sao lưu và khôi phục
+- Ngôn ngữ
+- Info
+- Quay lại
 
-Beta4 nhận JSON gốc và bản sao lưu xuất bởi beta4. Các tệp nội bộ/bản sao lưu dạng
-mã hoá của beta1–3 không phải định dạng nhập của beta4. Chúng được giữ nguyên;
-để chuyển danh sách trên máy trong video, chọn tệp `AppList_Pro.json` gốc.
-Không cần xoá thư mục iCloud hoặc sửa thủ công phím tắt.
+Chọn một app trong **Chỉnh sửa danh sách** để đổi tên, ghim/bỏ ghim, đặt vị trí,
+mở App Store hoặc xoá mục. Xoá mục không gỡ ứng dụng khỏi iPhone. Mở App Store
+không tự cài ứng dụng. Không có bước kiểm tra mạng hoặc cập nhật trước khi mở app.
 
-## Thay đổi sau video beta3
+**Sắp xếp vị trí** nhận số từ 1 đến số app trong nhóm hiện tại. Nhóm ghim và nhóm
+thường được xếp riêng; nhóm ghim luôn đứng trước. Thứ tự mới được lưu cho lần chạy
+sau. App mới thêm vào cuối nhóm thường. Các mục cùng thứ hạng dùng tên để phân xử.
+Các app chuyển từ beta4 ban đầu giữ cách xếp ghim trước, tên A–Z trong từng nhóm.
 
-Video xác nhận trình chọn Files và bước xác nhận nhập đã chạy, nhưng cả nhập JSON
-lẫn thiết lập mới đều dừng ở **AP201**, trước khi ghi tệp. Video không cho biết
-chính xác nhánh con nào trong bộ tự kiểm tra thất bại.
+Ngôn ngữ hiện tại nằm đầu danh sách với dấu ✓. Chọn lại cùng ngôn ngữ đã có bộ lưu
+không tải hoặc lưu thêm. Đổi ngôn ngữ quay về Quản lý; tải lại bộ ngôn ngữ quay về
+Sao lưu và khôi phục. Tải lại riêng bộ giao diện không tạo mốc dữ liệu ứng dụng.
 
-Beta4 thay lớp lưu này bằng **Dictionary → Save File** gốc của Shortcuts, theo
-cách bản xuất ban đầu dùng. Bộ ghi không tự ghép toàn bộ JSON, không mã hoá
-Base64 và không xác minh dựa trên thứ tự/khoảng trắng của JSON. Hai vế của mọi
-so sánh động được tạo thành Text trước khi dùng trong If. So sánh giá trị có thể
-rỗng, như URL của mục nhập cũ, thêm cùng một tiền tố không rỗng vào cả hai vế.
+Info chứa phiên bản, giới thiệu và hướng dẫn dùng bằng ngôn ngữ đã chọn.
 
-Dữ liệu ứng dụng và bộ ngôn ngữ được tách riêng. Bộ ngôn ngữ hỏng hoặc không khớp
-không chặn mở ứng dụng: dùng bộ lưu trước nếu khớp, sau đó dùng tiếng Anh có sẵn.
-Có thể tải lại bộ ngôn ngữ trong Sao lưu và khôi phục khi có mạng.
+## Nhập JSON có xem trước
 
-Các lỗi native trước đó vẫn được chặn: không dùng điều kiện Array Contains bị
-thiếu tham số, không dùng kiểm tra tồn tại để suy ra chuỗi có ký tự, không dùng
-cờ mở picker cũ hoặc mã tác vụ `detect.urls` không tồn tại.
+Vào **Quản lý → Sao lưu và khôi phục → Nhập từ tệp**. Nhận bản sao lưu beta5,
+beta4 hoặc tệp gốc `AppList_Pro.json` dạng `{"Tên ứng dụng":"com.example.App"}`.
+Tệp gốc trong Files không bị sửa hoặc xoá.
 
-## Dữ liệu và phục hồi
+Màn hình xem trước hiển thị số mục hợp lệ, có thể thêm mới, đã có trong danh sách,
+mục lỗi và tên xung đột khi gộp:
+
+- **Gộp và giữ mục đã có**: đối chiếu bằng Bundle ID. Giữ nguyên tên, ghim, link
+  và vị trí của app hiện có. Chỉ thêm app mới không gây trùng tên. Không có mục
+  mới thì không ghi dữ liệu hoặc xoay mốc phục hồi.
+- **Thay toàn bộ danh sách**: có bước xác nhận riêng, sau đó thay bằng các mục hợp
+  lệ trong tệp. Các mục lỗi đã được đếm trong màn hình xem trước sẽ bị loại.
+- **Quay lại**: giữ nguyên toàn bộ danh sách và các mốc lưu.
+
+Hai tên trong cùng tệp gốc trỏ đến một Bundle ID được coi là xung đột: loại cả
+nhóm tên đó và đếm rõ, thay vì tự chọn một tên. Hai Bundle ID có cùng tên trong
+bản sao lưu cũng bị loại cùng nhau. Tệp toàn mục lỗi không được dùng để xoá sạch
+danh sách. Tệp rỗng có thể thay danh sách bằng danh sách rỗng sau xác nhận rõ ràng.
+
+Nhập thông thường giữ ngôn ngữ hiện tại. Phục hồi một mốc cũ phục hồi cả ngôn ngữ
+của mốc đó. Khi chưa có cấu hình mà nhập bản sao lưu hiện đại, ngôn ngữ trong tệp
+được dùng; không bắt buộc tải bộ giao diện để phục hồi danh sách.
+
+## Các mốc phục hồi
+
+Trong Sao lưu và khôi phục, **Các mốc phục hồi** hiển thị tối đa ba trạng thái cũ
+được giữ tự động, kèm thời điểm và số app. Bản trước gần nhất được dùng bổ sung
+nếu chưa có trong các mốc; các revision trùng không hiển thị lặp. Chọn mốc rồi
+xác nhận để phục hồi. Mốc hỏng bị bỏ qua. Mốc từ beta4 hiển thị dấu phiên bản
+`beta4` vì định dạng cũ không có thời điểm lưu.
+
+Mốc tự động có thể bị thay thế theo các lần sửa sau. Muốn giữ một bản lâu dài,
+dùng **Xuất bản sao lưu** và lưu tệp ở nơi bạn chọn.
 
 Tệp ở `iCloud Drive/Shortcuts/AppListPro/`:
 
 | Tệp | Nội dung |
 | --- | --- |
-| `apps.v4.json` | Danh sách đang dùng |
-| `apps.previous.v4.json` | Trạng thái trước lần thay đổi gần nhất |
-| `apps.pending.v4.json` | Bản ghi tạm được đọc và kiểm tra trước khi thay tệp chính |
-| `labels.v4.json` | Bộ ngôn ngữ đã chọn |
-| `labels.previous.v4.json` | Bộ ngôn ngữ trước đó |
+| `apps.v5.json` | Danh sách và thứ tự hiện tại |
+| `apps.pending.v5.json` | Bản tạm được đọc và đối chiếu trước khi thay tệp chính |
+| `apps.previous.v5.json` | Trạng thái trước thay đổi gần nhất |
+| `history.1.v5.json` đến `history.3.v5.json` | Ba mốc cũ, mới nhất trước |
+| `labels.v5.json`, `labels.previous.v5.json` | Bộ giao diện hiện tại và bộ trước |
 
-Beta4 dùng tên tệp mới; không ghi đè tệp beta1–3. Dữ liệu riêng không được tải lên
-GitHub. Muốn giữ một mốc lâu dài, dùng **Xuất bản sao lưu**. Ghim, đổi tên, nhập,
-xoá mục hoặc đổi ngôn ngữ đều tính là một lần thay đổi. **Khôi phục lần lưu trước**
-cần xác nhận và phục hồi toàn bộ trạng thái trước đó.
+Dữ liệu riêng không tải lên GitHub. Ghi theo thứ tự bản tạm → mốc cũ/bản trước →
+bản chính, có kiểm tra đọc lại. Lỗi lưu dừng phiên để giữ tệp chính hoặc bản trước.
+Các mã `AP5 / tên tệp`, `AP5 history` giúp xác định bước thất bại. Lỗi quyền truy
+cập/I/O hệ thống có thể xuất hiện trực tiếp từ tác vụ Files.
 
-Ghi dữ liệu theo thứ tự bản tạm → bản trước → bản chính. Bản tạm và bản chính
-được đọc lại, đối chiếu từng giá trị với dữ liệu trong phiên. Tệp chính hỏng sẽ
-được thay bằng bản trước trong bộ nhớ nếu bản đó còn hợp lệ; phím tắt thông báo
-phục hồi. Nếu cả hai hỏng, có lựa chọn nhập, thiết lập mới hoặc huỷ.
+Kiểm tra revision trước ghi và ngay trước thay tệp chính, kể cả khi tệp ban đầu
+chưa có, giúp tránh ghi đè thay đổi đã hiện trên máy. Đây không phải cơ sở dữ liệu
+giao dịch; hai thiết bị còn chờ iCloud đồng bộ vẫn có thể xung đột. Nên chỉnh sửa
+trên một thiết bị mỗi lúc.
 
-Thông báo `AP4 / apps.pending.v4.json`, `AP4 / apps.previous.v4.json` hoặc
-`AP4 / apps.v4.json` cho biết tệp không qua kiểm tra sau ghi. `AP410` và `AP411`
-lần lượt chỉ lỗi kiểm tra bản tạm và bản chính của bộ ngôn ngữ. Lỗi quyền truy
-cập hoặc I/O của hệ thống có thể hiển thị trực tiếp từ tác vụ Files.
+## Implementation and validation
 
-Danh sách dùng được ngoại tuyến khi tệp iCloud đã có trên máy. Tìm ứng dụng,
-tra liên kết và tải ngôn ngữ cần mạng. Kiểm tra revision trước ghi và ngay trước
-thay tệp chính giúp phát hiện thay đổi đã hiện trên máy; không bảo đảm giao dịch
-đồng thời giữa các thiết bị còn chờ iCloud đồng bộ. Nên sửa trên một máy mỗi lúc.
+The beta4 native Dictionary → Save File protocol is retained. Schema 5 adds
+`orderJSON` and `savedAt` to the eight existing fields. Five JSON map strings are
+encoded by native Dictionary conversion, with explicit `{}` for empty maps.
+The outer dictionary is saved directly. No Base64 state envelope or JSON-byte
+checksum is used. Revision is an opaque concurrency token. Files are readable
+JSON, not encrypted storage.
 
-## Source and public data
+Readers accept schema4 and schema5. Required fields, scalar types, map counts,
+matching ID sets and position syntax are checked. Imports additionally validate
+each record, Bundle-ID hash and conflicting names. Potentially empty comparisons
+use a shared nonempty prefix; both operands are materialized as Text. Native
+array Contains and the obsolete file-picker flag remain excluded.
 
-Public source, translations and Info text live in this repository. The twenty
-locale choices and existing readable language JSON files are retained. Only the
-selected `.json` file is fetched during setup/change/reload, then cached locally.
-Language content stays under the unchanged `releases/1.1.0-beta.1` path. Updating
-that content requires a new data release; **Reload** does not update the engine.
+Within a session, the app label text and route map are reused until a save
+invalidates them. A fresh list is built from cached text for each presentation,
+avoiding appended controls leaking into later menus. First renders use a single
+app loop plus native sorting and text operations.
 
-State schema 4 is a native flat dictionary with eight string fields: `product`,
-`schema`, `language`, `revision`, `namesJSON`, `bundlesJSON`, `storesJSON`, `pinsJSON`.
-The four map values are serialized by native Dictionary-to-Text conversion,
-using an explicit `{}` for empty maps; the outer Dictionary is saved directly.
-JSON grammar, allowed/required keys and matching map counts are checked on read.
-Imports additionally validate every record, Bundle-ID hash and unique name.
-The revision is an opaque concurrency token, not a JSON integrity checksum.
-App IDs use SHA-256 of the Bundle ID, avoiding dotted dictionary-key ambiguity.
-The files are readable JSON, not encrypted storage.
+Translations and Info are public under `releases/1.1.0-beta.5`. Existing beta1
+release files are unchanged. `config/strings.json` holds the original labels;
+`config/extensions.json` adds beta5 labels. Compact embedded extensions let a
+beta4 language cache upgrade offline. **Reload** updates the compatible UI pack,
+not the engine. New translation changes require a new release path.
 
 ```sh
 python3 src/build.py
@@ -113,17 +134,24 @@ python3 tests/test_workflow.py
 python3 src/audit.py
 python3 src/sign.py
 python3 src/audit.py --signed
+python3 tests/measure_workload.py
 ```
 
-Tests execute the emitted native action graph with simulated I/O and ICU regex.
-They cover separate setup/add/import/relaunch sessions, JSON reformatting, empty
-maps/URLs, save corruption, I/O failures, revision changes, recovery and UI-cache
-failure. Audit checks action identifiers against independent references, text
-comparison operands, control groups, output references and UTF-16 token ranges.
-The signed action graph must equal the inspected source. Signing uses Shortcuty's
-public documented API at build time; the installed shortcut never calls it.
+Tests execute the emitted graph with simulated I/O and ICU regex. Cases include
+migration in all 20 locales, app/empty-list reloads, merge/replace/cancel, alias
+and name conflicts, ordering, history rotation, corrupt/I/O-failed saves, and
+concurrent revisions. Lists of 10/50/100 apps are also edited and reopened.
+`qa/menu-workload.json` counts interpreted actions; it is not iPhone timing.
+The comparison baseline is used only when the signed beta4 file is locally
+available. Signed-archive verification requires Python `lzfse`.
 
-This is an iOS 18 beta. Host-side checks do not establish actual iPhone execution,
-menu rendering or timing. Native open-app errors, such as an app not installed,
-remain system errors; install, edit or remove the relevant entry. Current check
-results and device-verification status are recorded under `qa/`.
+Signing uses Shortcuty's documented public API during the build. The installed
+shortcut never contacts that service. The signed action graph must match the
+inspected source. Only public generated source is signed; no personal list is
+read or uploaded by the signing script.
+
+Beta4 basic operation was confirmed by the owner on iPhone. Beta5 host tests do
+not establish native device timing or complete iPhone acceptance. Opening an app
+that is not installed remains a system error; edit or remove that entry. Real
+app-icon rows are deferred to a separate experiment; the main launcher remains
+native and contains no browser/Web View layer.

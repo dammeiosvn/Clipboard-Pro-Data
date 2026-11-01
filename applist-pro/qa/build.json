@@ -1,7 +1,7 @@
 {
-  "version": "1.1.0-beta.4",
-  "actions": 1997,
-  "binaryBytes": 291548,
-  "unsignedSHA256": "38d58b357f92df661207eb99fd4ffe44c977cafce092ba9a42a721eea4f2b881",
+  "version": "1.1.0-beta.5",
+  "actions": 4070,
+  "binaryBytes": 601227,
+  "unsignedSHA256": "56bc918e1597ac64f89d73a1061d405e8b25bfa065e01296f38fd0f1443ee29e",
   "nativeDeviceVerified": false
 }
