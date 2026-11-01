@@ -1,0 +1,8 @@
+__pycache__/
+dist/
+qa/setup-state.json
+*.pending.json
+active.json
+active.previous.json
+legacy-import-original.json
+unreadable-before-reset.json

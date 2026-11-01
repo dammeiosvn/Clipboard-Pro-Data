@@ -1,0 +1,88 @@
+{
+  "productId": "applist-pro",
+  "schemaVersion": "2",
+  "version": "1.1.0-beta.1",
+  "author": "© Sentechtipsvn",
+  "languages": {
+    "vi": {
+      "name": "Tiếng Việt",
+      "sha256": "f48f0d7cd4da9a06b3d965aac4a00481c7ddca199d004c28e22b6c3df1801afb"
+    },
+    "en": {
+      "name": "English",
+      "sha256": "f4057511a9d6374d1f4c5f168f14fb8cba74054089267b6cd030b55cb0700448"
+    },
+    "en-GB": {
+      "name": "English (UK)",
+      "sha256": "f4057511a9d6374d1f4c5f168f14fb8cba74054089267b6cd030b55cb0700448"
+    },
+    "ja": {
+      "name": "日本語",
+      "sha256": "c48ae4a5138fdd60e59b57a43700ae638aebf9378a5f96568ed07cdd21e48abf"
+    },
+    "ko": {
+      "name": "한국어",
+      "sha256": "911fb90af145744ef72b1c745abf072a7d6c08dcbdce3acf29534603dc6f143a"
+    },
+    "zh-Hans": {
+      "name": "简体中文",
+      "sha256": "cb9330633676acaad6a5732882e3e28a65295aae67d6e6710dac06488d0b52df"
+    },
+    "zh-Hant": {
+      "name": "繁體中文",
+      "sha256": "096b5e6ffe5eea838d75d63c086cd6ed1655ecb18c19d69c2cf7b8237ea5b966"
+    },
+    "fr": {
+      "name": "Français",
+      "sha256": "cb2df33ebf1303ce2985d79f831e81298976e230ea97e261a8cc796125cc5aca"
+    },
+    "de": {
+      "name": "Deutsch",
+      "sha256": "012670bc286690231c1bea069cd519d3cfb67328e322d20a4bfd57cb3ab2e6dd"
+    },
+    "ru": {
+      "name": "Русский",
+      "sha256": "9cbf2a4dd8d5bbb7dcfa3727ea980904c47a6209c33b559cde2da03ca062d118"
+    },
+    "es": {
+      "name": "Español",
+      "sha256": "352249bb4e76b69d2e44a47c71b2020bb43a72cd0f6b2ddc41ea9708f5a2b670"
+    },
+    "th": {
+      "name": "ไทย",
+      "sha256": "e2c374e638b0f4e4680d74f2eb9c254fc76507f0eea740d0f03507217da81a71"
+    },
+    "id": {
+      "name": "Bahasa Indonesia",
+      "sha256": "bd5bb7fe389ea3a7c8d2282b7aac4db470f732f97f3a48e65c86b5e85f22e5b8"
+    },
+    "tr": {
+      "name": "Türkçe",
+      "sha256": "b608210a0e47eb1ce107823673980cea3869235813305891ddce7519e2ba9a3c"
+    },
+    "it": {
+      "name": "Italiano",
+      "sha256": "5b6de63582e5f12bd88b4488bac2c38e533a6046a3755d330ff8ccfaae0ba706"
+    },
+    "pt-BR": {
+      "name": "Português (Brasil)",
+      "sha256": "7c5127dd4810deb60cf81c5c1713830fd689d939e2f7557d2a87a4802c24992b"
+    },
+    "hi": {
+      "name": "हिन्दी",
+      "sha256": "9b9276fb426feefa6536d102dafb1c5348214857369beb028a98e11cf2646381"
+    },
+    "ar": {
+      "name": "العربية",
+      "sha256": "b5a7d80ce6d10d25fe723ef595948b76d71583cdc60a465e33d571d7fc129b73"
+    },
+    "nl": {
+      "name": "Nederlands",
+      "sha256": "c74b23c3c8dc4464c631eec91e2c3382bbaea1e630c794bc829081178eb11e2b"
+    },
+    "pl": {
+      "name": "Polski",
+      "sha256": "3906150111a378b6e458188f69c0f225e4dbfda730a14be7e1a9ac1bb2b8004a"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "balancedControlFlow": true,
+  "uniqueActionUUIDs": true,
+  "validUTF16TokenSpans": 563,
+  "actionReferencesVerified": true,
+  "actions": 1535,
+  "binaryBytes": 226981,
+  "signedActionGraphEqual": true,
+  "nativeDeviceVerified": false,
+  "signedBytes": 111015,
+  "signedSHA256": "0046b010a77242d252872a3d286c3472de6429d0af52997ead9611059e24d274"
+}

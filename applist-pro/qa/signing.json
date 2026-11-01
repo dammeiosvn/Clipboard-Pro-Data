@@ -1,0 +1,9 @@
+{
+  "signed": true,
+  "format": "AEA1",
+  "mode": "anyone",
+  "bytes": 111015,
+  "sha256": "0046b010a77242d252872a3d286c3472de6429d0af52997ead9611059e24d274",
+  "inputSHA256": "672ee3dbd9b9d47dd62e4ad4dc25a2d6e9383b8494637d43be8af89803709380",
+  "nativeDeviceVerified": false
+}
