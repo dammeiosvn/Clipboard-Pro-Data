@@ -161,9 +161,11 @@ class Workflow:
             'WFReplaceTextRegularExpression': regex, 'WFReplaceTextCaseSensitive': True}, 'Normalized text')
 
     def if_eq(self, value, *other):
-        # Materialize Text before If: don't let a Dictionary Value's inferred type
-        # change the condition editor/runtime comparison after importing on iOS.
+        # Both operands must be real Text outputs. Coercing only the left side
+        # leaves dynamic Number/Dictionary values on the right for iOS to infer.
         value = self.text(value, name='Condition text')
+        if any(isinstance(part, dict) for part in other):
+            other = (self.text(*other, name='Expected text'),)
         g = self.uid('if')
         self.action('conditional', {'WFInput': {'Type': 'Variable', 'Variable': ref(value, 'WFStringContentItem')},
             'WFCondition': 4, 'WFConditionalActionString': string_parameter(*other),

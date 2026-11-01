@@ -1,0 +1,30 @@
+{
+  "baseline": "1.1.0-beta.3",
+  "fix": "1.1.0-beta.4",
+  "evidence": "User-provided iPhone screen recording; no personal files or screenshots published",
+  "observed": [
+    "Files picker opens and the selected legacy JSON reaches import confirmation",
+    "Legacy import stops at AP201 after confirmation",
+    "New-list setup also stops at AP201",
+    "AP201 is a self-check before any app-state write"
+  ],
+  "preciseFailingSubcheckConfirmed": false,
+  "changes": [
+    "Save a native Dictionary directly through Save File, matching the original exported workflow",
+    "Replace the Base64/checksum state envelope with native flat JSON schema 4",
+    "Materialize both operands of dynamic equality as Text; prefix potentially empty value comparisons",
+    "Read JSON file contents explicitly through Get Text from Input",
+    "Keep interface language data separate with a previous-cache and embedded English fallback",
+    "Use new v4 filenames while leaving legacy and beta1-3 files untouched",
+    "Read back and compare staged/final map values, including empty Store URLs",
+    "Check visible local revision before staging and immediately before replacing active data"
+  ],
+  "hostTests": "qa/test-results.json",
+  "fixedEngineDeviceVerified": false,
+  "deviceAcceptance": [
+    "Install the distinctly named AppList Pro beta4, select Vietnamese, reach the app list",
+    "Add one installed app, exit, relaunch and open it from the first menu",
+    "Import original AppList_Pro.json through Files, confirm, exit and relaunch",
+    "Pin/rename/delete one entry, verify neighboring entries and restore the previous save"
+  ]
+}

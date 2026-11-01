@@ -240,7 +240,7 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
                     result['ignoredLegacyPickers'] += 1
                     answer = None
                 else:
-                    path = p['WFGetFilePath']
+                    path = stringify(evaluate(p['WFGetFilePath']))
                     result['reads'].append(path)
                     if on_read:
                         on_read(path, result)
@@ -257,11 +257,16 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
                 answer = File(p['WFName'], as_text(evaluate(p['WFInput'])))
             elif kind == 'documentpicker.save':
                 file = evaluate(p['WFInput'])
-                assert isinstance(file, File)
+                if isinstance(file, dict):
+                    # Native Save File accepts a Dictionary and serializes it
+                    # as JSON, as the original device-tested shortcut does.
+                    file = File('Dictionary.json', json.dumps(file, ensure_ascii=False))
+                elif not isinstance(file, File):
+                    file = File('Text.txt', as_text(file))
                 if p['WFAskWhereToSave']:
                     result['exports'].append(file)
                 else:
-                    path = p['WFFileDestinationPath']
+                    path = stringify(evaluate(p['WFFileDestinationPath']))
                     assert path.startswith('AppListPro/') and '..' not in path
                     if fail_save == path:
                         result['status'] = 'io-error'
@@ -273,9 +278,11 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
                             pass
                         else:
                             file = File(file.name, json.dumps(data, ensure_ascii=False, sort_keys=True, indent=2))
-                    if corrupt_save == path:
+                    if callable(corrupt_save):
+                        file = corrupt_save(path, file)
+                    elif corrupt_save == path:
                         data = json.loads(file.body)
-                        data['payload'] = 'AAAA'
+                        data['namesJSON'] = '{truncated'
                         file = File(file.name, json.dumps(data))
                     result['disk'][path] = file
                     result['writes'].append(path)

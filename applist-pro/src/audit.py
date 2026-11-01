@@ -8,7 +8,7 @@ import sys
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-SIGNED = ROOT / 'dist/AppList-Pro-1.1-beta3.shortcut'
+SIGNED = ROOT / 'dist/AppList-Pro-1.1-beta4.shortcut'
 
 
 def walk(value):
@@ -25,7 +25,7 @@ def audit(signed=False):
     raw = (ROOT / 'dist/AppList-Pro.unsigned.bplist').read_bytes()
     workflow = plistlib.loads(raw)
     assert workflow == plistlib.loads((ROOT / 'dist/AppList-Pro.unsigned.shortcut').read_bytes())
-    seen, stack = set(), []
+    seen, stack, prior_actions = set(), [], {}
     spans = 0
     for index, action in enumerate(workflow['WFWorkflowActions']):
         kind, p = action['WFWorkflowActionIdentifier'], action['WFWorkflowActionParameters']
@@ -53,6 +53,7 @@ def audit(signed=False):
             else:
                 assert mode == 2 and stack.pop()[:2] == (group, kind)
         seen.add(p['UUID'])
+        prior_actions[p['UUID']] = action
     assert not stack
     identifiers = [a['WFWorkflowActionIdentifier'] for a in workflow['WFWorkflowActions']]
     contract = json.loads((ROOT / 'config/native-actions.json').read_text())
@@ -72,6 +73,12 @@ def audit(signed=False):
             if p.get('WFControlFlowMode') == 0:
                 if p['WFCondition'] == 4:
                     assert p.get('WFConditionalActionString') is not None
+                    rhs = p['WFConditionalActionString']
+                    if isinstance(rhs, dict):
+                        for node in walk(rhs):
+                            if node.get('Type') == 'ActionOutput':
+                                origin = prior_actions[node['OutputUUID']]
+                                assert origin['WFWorkflowActionIdentifier'] == 'is.workflow.actions.gettext', 'Dynamic equality RHS must be materialized as Text'
                 elif p['WFCondition'] == 2:
                     assert p.get('WFNumberValue') is not None
                 else:
@@ -92,6 +99,8 @@ def audit(signed=False):
               'actions': len(identifiers), 'binaryBytes': len(raw),
               'nativeIdentifiersChecked': len(set(identifiers)),
               'unsupportedArrayContainsRemoved': True,
+              'dynamicComparisonOperandsMaterialized': True,
+              'stateEnvelopeBase64Removed': 'is.workflow.actions.base64encode' not in identifiers,
               'signedActionGraphEqual': None, 'nativeDeviceVerified': False}
     if signed:
         import lzfse

@@ -3,13 +3,16 @@ from pathlib import Path
 import hashlib
 import json
 import plistlib
-import itertools
 
-from catalog import BASE_URL, VERSION, KEYS, publish
+from catalog import BASE_URL, VERSION, DATA_VERSION, KEYS, publish
 from workflow import Workflow, dictionary_value, variable as v, ref, token
 
 ROOT = Path(__file__).resolve().parents[1]
-FORMAT = 'applist-active-v2'
+SCHEMA = '4'
+ACTIVE = 'apps.v4.json'
+PREVIOUS = 'apps.previous.v4.json'
+PENDING = 'apps.pending.v4.json'
+LABELS = 'labels.v4.json'
 TITLE = 'AppList Pro · © Sentechtipsvn'
 FOLDER = {'fileLocation': {'WFFileLocationType': 'Shortcuts', 'relativeSubpath': '',
     'appContainerBundleIdentifier': 'com.apple.shortcuts',
@@ -21,20 +24,21 @@ FLAT = r'\{\s*(?:' + PAIR + r'(?:\s*,\s*' + PAIR + r')*)?\s*\}'
 FLAT_PATTERN = r'\A\s*' + FLAT + r'\s*\z'
 PIN_PAIR = JS + r'\s*:\s*(?:' + JS + r'|[01])'
 PIN_MAP = r'\{\s*(?:' + PIN_PAIR + r'(?:\s*,\s*' + PIN_PAIR + r')*)?\s*\}'
-B64 = r'\A(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?\z'
-B64_BODY = B64[2:-2]
-STATE_PARTS = [r'"product"\s*:\s*"applist-pro"', r'"schema"\s*:\s*"2"',
-    r'"language"\s*:\s*' + JS, r'"languagePayload"\s*:\s*"' + B64_BODY + '"']
-STATE_PARTS += ['"' + key + r'"\s*:\s*' + (PIN_MAP if key == 'pins' else FLAT)
-                for key in ('names', 'bundles', 'stores', 'pins')]
-# Exactly eight allowed properties, in any order. A separate key-count guard
-# rejects duplicate/missing properties after parsing. JSON property order is
-# never an integrity or compatibility boundary.
-STATE_FIELD = '(?:' + '|'.join(STATE_PARTS) + ')'
-STATE_PATTERN = r'\A\s*\{\s*' + STATE_FIELD + r'(?:\s*,\s*' + STATE_FIELD + r'){7}\s*\}\s*\z'
 BUNDLE = r'\A[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+\z'
 NAME = r'\A(?![⭐⚙↩])[^\x00-\x1f\x7f\r\n]{1,90}\z'
 STORE = r'\Ahttps://apps\.apple\.com/(?:[^\s/#?]+/)*id[0-9]+(?:\?[^\s#]*)?(?:#[^\s]*)?\z'
+
+
+def object_pattern(keys):
+    # Limit keys before using Get Dictionary Value. Exactly N distinct keys
+    # after parsing implies every required key is present, in any order.
+    field = r'"(?:' + '|'.join(keys) + r')"\s*:\s*' + JS
+    return r'\A\s*\{\s*' + field + r'(?:\s*,\s*' + field + r'){' + str(len(keys) - 1) + r'}\s*\}\s*\z'
+
+
+STATE_PATTERN = object_pattern(('product', 'schema', 'language', 'revision',
+    'namesJSON', 'bundlesJSON', 'storesJSON', 'pinsJSON'))
+LABEL_PATTERN = object_pattern((*KEYS, '_locale', '_dataVersion'))
 
 
 def build():
@@ -42,7 +46,7 @@ def build():
     catalog = json.loads((ROOT / 'config/strings.json').read_text())
     boot = {'name': 'AppList Pro', 'title': TITLE, 'author': '© Sentechtipsvn',
             'version': VERSION, 'baseURL': BASE_URL, 'languages': descriptors,
-            'fallback': catalog['en'], 'values': {}}
+            'fallback': catalog['en'], 'dataVersion': DATA_VERSION, 'values': {}}
     w = Workflow('AppList Pro')
     a, get, text, put, L = w.action, w.get, w.text, w.put, w.label
 
@@ -66,126 +70,169 @@ def build():
 
     def read(name):
         return a('documentpicker.open', {'WFFile': ref(v('StorageRoot')),
-            'WFGetFilePath': 'AppListPro/' + name, 'WFFileErrorIfNotFound': False,
-            'WFGetFolderContents': False}, 'Read ' + name)
+            'WFGetFilePath': token('AppListPro/', name) if isinstance(name, dict) else 'AppListPro/' + name, 'WFFileErrorIfNotFound': False,
+            'WFGetFolderContents': False}, 'Read local JSON')
 
     def save(body, name):
-        named = w.named_json(body, name)
-        return a('documentpicker.save', {'WFInput': ref(named), 'WFFolder': ref(v('StorageRoot')),
-            'WFAskWhereToSave': False, 'WFFileDestinationPath': 'AppListPro/' + name,
-            'WFSaveFileOverwrite': True}, 'Save ' + name)
+        # Save the Dictionary itself, as in the user's original export. The
+        # native file action owns JSON encoding, filename and escaping.
+        return a('documentpicker.save', {'WFInput': ref(body), 'WFFolder': ref(v('StorageRoot')),
+            'WFAskWhereToSave': False, 'WFFileDestinationPath': token('AppListPro/', name) if isinstance(name, dict) else 'AppListPro/' + name,
+            'WFSaveFileOverwrite': True}, 'Save local JSON')
 
-    def inspect(source, fmt=FORMAT):
-        w.assign('EnvelopeOK', '0')
-        raw = text(source, name='Envelope text')
-        fields = [r'"format"\s*:\s*"' + fmt + '"',
-                  r'"payload"\s*:\s*"' + B64_BODY + '"',
-                  r'"sha256"\s*:\s*"[0-9a-f]{64}"']
-        grammar = r'\A\s*\{\s*(?:' + '|'.join(r'\s*,\s*'.join(p) for p in itertools.permutations(fields)) + r')\s*\}\s*\z'
-        guards = [w.if_match(raw, grammar)]
-        env = a('detect.dictionary', {'WFInput': ref(raw)}, 'Envelope')
-        payload = text(get(env, 'payload'), name='Stable encoded payload')
-        sha = text(get(env, 'sha256'), name='Expected checksum')
-        guards.append(w.if_text(payload))
-        guards.append(w.if_eq(w.hash(payload), sha))
-        w.set('VerifiedEnvelope', env)
-        w.set('VerifiedPayload', payload)
-        w.set('VerifiedDigest', sha)
-        w.assign('EnvelopeOK', '1')
-        for group in reversed(guards):
-            w.end_if(group)
-
-    def decode(payload):
-        return text(a('base64encode', {'WFInput': ref(payload), 'WFEncodeMode': 'Decode'}, 'Decode data'))
+    def scalar_check(value, expected, message='saveFailed', code=None):
+        # A nonempty prefix also makes an empty Store URL a valid If operand.
+        check(text('value:', value), text('value:', expected), message, code)
 
     def candidate(source):
-        """Only parse JSON after a complete restricted-grammar match."""
-        inspect(source)
+        """Read a flat native JSON file; map JSON is encoded by iOS, not by us."""
         w.assign('CandidateOK', '0')
-        guards = [w.if_eq(v('EnvelopeOK'), '1')]
-        w.set('CandidateEnvelope', v('VerifiedEnvelope'))
-        w.set('CandidateDigest', v('VerifiedDigest'))
-        body = decode(v('VerifiedPayload'))
-        guards.append(w.if_match(body, STATE_PATTERN))
-        data = a('detect.dictionary', {'WFInput': ref(body)}, 'AppList state')
+        raw = a('detect.text', {'WFInput': ref(source)}, 'Read state file contents')
+        guards = [w.if_match(raw, STATE_PATTERN)]
+        data = a('detect.dictionary', {'WFInput': ref(raw)}, 'Native app state')
         guards.append(w.if_eq(w.count(w.keys(data)), '8'))
+        for key, expected in [('product', 'applist-pro'), ('schema', SCHEMA)]:
+            guards.append(w.if_eq(get(data, key), expected))
         lang = text(get(data, 'language'))
-        languages = get(v('Config'), 'languages')
         guards.append(w.if_match(lang, r'\A(?:' + '|'.join(descriptors) + r')\z'))
-        pack = text(get(data, 'languagePayload'))
-        guards.append(w.if_eq(w.hash(pack), get(get(languages, lang), 'sha256')))
-        strings_text = decode(pack)
-        guards.append(w.if_match(strings_text, FLAT_PATTERN))
-        strings = a('detect.dictionary', {'WFInput': ref(strings_text)}, 'Verified interface strings')
-        count = w.count(w.keys(get(data, 'names')))
-        guards.append(w.if_eq(w.count(w.keys(get(data, 'bundles'))), count))
-        guards.append(w.if_eq(w.count(w.keys(get(data, 'stores'))), count))
-        guards.append(w.if_eq(w.count(w.keys(get(data, 'pins'))), count))
+        revision = text(get(data, 'revision'))
+        guards.append(w.if_match(revision, r'\A[0-9a-f]{64}\z'))
+        maps = {}
+        for collection in ('Names', 'Bundles', 'Stores', 'Pins'):
+            body = text(get(data, collection.lower() + 'JSON'))
+            pattern = r'\A\s*' + PIN_MAP + r'\s*\z' if collection == 'Pins' else FLAT_PATTERN
+            guards.append(w.if_match(body, pattern))
+            maps[collection] = a('detect.dictionary', {'WFInput': ref(body)}, 'Read ' + collection)
+        count = w.count(w.keys(maps['Names']))
+        for collection in ('Bundles', 'Stores', 'Pins'):
+            guards.append(w.if_eq(w.count(w.keys(maps[collection])), count))
         w.set('Candidate', data)
-        w.set('CandidateStrings', strings)
+        w.set('CandidateEnvelope', data)
+        w.set('CandidateDigest', revision)
+        for collection, mapping in maps.items():
+            w.set('Candidate' + collection, mapping)
         w.assign('CandidateOK', '1')
         for group in reversed(guards):
             w.end_if(group)
 
     def bind():
-        for var, key in [('Language', 'language'), ('LanguagePayload', 'languagePayload'),
-                         ('Names', 'names'), ('Bundles', 'bundles'), ('Stores', 'stores'), ('Pins', 'pins')]:
-            w.set(var, get(v('Candidate'), key))
-        w.set('Strings', v('CandidateStrings'))
+        w.set('Language', get(v('Candidate'), 'language'))
+        for collection in ('Names', 'Bundles', 'Stores', 'Pins'):
+            w.set(collection, v('Candidate' + collection))
         w.assign('LanguageReady', '1')
 
+    def labels_candidate(source, language):
+        w.assign('LabelsOK', '0')
+        raw = a('detect.text', {'WFInput': ref(source)}, 'Read language file contents')
+        guards = [w.if_match(raw, LABEL_PATTERN)]
+        labels = a('detect.dictionary', {'WFInput': ref(raw)}, 'Cached language dictionary')
+        guards.append(w.if_eq(w.count(w.keys(labels)), str(len(KEYS) + 2)))
+        guards.append(w.if_eq(get(labels, '_locale'), language))
+        guards.append(w.if_eq(get(labels, '_dataVersion'), get(v('Config'), 'dataVersion')))
+        w.assign('LabelKeysOK', '1')
+        loop, key = w.each(w.keys(get(v('Config'), 'fallback')))
+        present = w.if_text(text(get(labels, key)))
+        w.otherwise(present)
+        w.assign('LabelKeysOK', '0')
+        w.end_if(present)
+        w.end_loop(loop)
+        guards.append(w.if_eq(v('LabelKeysOK'), '1'))
+        w.set('CachedStrings', labels)
+        w.assign('LabelsOK', '1')
+        for group in reversed(guards):
+            w.end_if(group)
+
+    def load_labels():
+        # A damaged or mismatched UI cache must not block the app launcher.
+        w.set('Strings', get(v('Config'), 'fallback'))
+        labels_candidate(read(LABELS), v('Language'))
+        good = w.if_eq(v('LabelsOK'), '1')
+        w.set('Strings', v('CachedStrings'))
+        w.otherwise(good)
+        labels_candidate(read('labels.previous.v4.json'), v('Language'))
+        previous = w.if_eq(v('LabelsOK'), '1')
+        w.set('Strings', v('CachedStrings'))
+        w.end_if(previous)
+        w.end_if(good)
+
+    def ensure_unchanged():
+        known = w.if_match(v('DiskDigest'), r'\A[0-9a-f]{64}\z')
+        raw = a('detect.text', {'WFInput': ref(read(ACTIVE))}, 'Read current revision')
+        valid = w.if_match(raw, STATE_PATTERN)
+        w.otherwise(valid)
+        w.alert(L('changedElsewhere'), stop=True, title=TITLE)
+        w.end_if(valid)
+        data = a('detect.dictionary', {'WFInput': ref(raw)}, 'Current revision metadata')
+        check(w.count(w.keys(data)), '8', 'changedElsewhere')
+        scalar_check(get(data, 'revision'), v('DiskDigest'), 'changedElsewhere')
+        w.end_if(known)
+
     def persist():
-        # Serialize names/URLs through native Dictionary -> Text, never raw user interpolation.
-        # An empty native Dictionary may coerce to zero text items. Emit {} as
-        # an explicit JSON scalar instead of interpolating an absent item.
+        fields = {'product': 'applist-pro', 'schema': SCHEMA, 'language': v('Language')}
         for collection in ('Names', 'Bundles', 'Stores', 'Pins'):
+            # Empty Dictionary -> Text can be absent on iOS. Use an explicit
+            # native string for this one special case.
             w.assign(collection + 'JSON', '{}')
             populated = w.if_has(w.keys(v(collection)))
             w.set(collection + 'JSON', text(v(collection)))
             w.end_if(populated)
-        body = text('{"product":"applist-pro","schema":"2","language":"', v('Language'),
-            '","languagePayload":"', v('LanguagePayload'), '","names":', v('NamesJSON'),
-            ',"bundles":', v('BundlesJSON'), ',"stores":', v('StoresJSON'), ',"pins":', v('PinsJSON'), '}',
-            name='New state JSON')
-        encoded = a('base64encode', {'WFInput': ref(body, 'WFStringContentItem'),
-            'WFEncodeMode': 'Encode', 'WFBase64LineBreakMode': 'None'}, 'Encode state')
-        w.set('NewPayload', text(encoded))
-        w.set('NewDigest', w.hash(v('NewPayload')))
-        env = a('dictionary', {'WFItems': dictionary_value({'format': FORMAT,
-            'payload': v('NewPayload'), 'sha256': v('NewDigest')})}, 'State envelope')
-        candidate(env)
-        check(v('CandidateOK'), '1', 'saveFailed', 'AP201')
-        check(v('CandidateDigest'), v('NewDigest'), 'saveFailed', 'AP201')
-        # Check the current local revision before overwriting another session.
-        disk_known = w.if_match(v('DiskDigest'), r'\A[0-9a-f]{64}\z')
-        inspect(read('active.json'))
-        check(v('EnvelopeOK'), '1', 'changedElsewhere')
-        check(v('VerifiedDigest'), v('DiskDigest'), 'changedElsewhere')
-        w.end_if(disk_known)
+            fields[collection.lower() + 'JSON'] = v(collection + 'JSON')
+        # Opaque revision generated once, stored and compared as text. This is
+        # a concurrency token, not a hash of the file's JSON serialization.
+        w.set('NewDigest', w.hash(text(v('NamesJSON'), v('BundlesJSON'),
+            v('StoresJSON'), v('PinsJSON'), v('Language'), v('ActiveDigest'))))
+        fields['revision'] = v('NewDigest')
+        env = a('dictionary', {'WFItems': dictionary_value(fields)}, 'New native state dictionary')
+        ensure_unchanged()
         a('file.createfolder', {'WFFolder': ref(v('StorageRoot')), 'WFFilePath': 'AppListPro'})
-        save(text(env), 'active.pending.json')
-        inspect(read('active.pending.json'))
-        check(v('EnvelopeOK'), '1', 'saveFailed')
-        check(v('VerifiedDigest'), v('NewDigest'), 'saveFailed')
         old = w.if_eq(v('ActiveValid'), '1')
-        save(text(v('ActiveEnvelope')), 'active.previous.json')
-        inspect(read('active.previous.json'))
-        check(v('EnvelopeOK'), '1', 'saveFailed')
-        check(v('VerifiedDigest'), v('ActiveDigest'), 'saveFailed')
         w.otherwise(old)
-        # A reset/import after both files fail keeps the unreadable original.
-        unreadable = read('active.json')
+        unreadable = read(ACTIVE)
         has_unreadable = w.if_has(unreadable)
-        save(text(unreadable), 'unreadable-before-reset.json')
+        save(unreadable, 'unreadable-before-reset.v4.json')
         w.end_if(has_unreadable)
         w.end_if(old)
-        save(text(env), 'active.json')
-        inspect(read('active.json'))
-        check(v('EnvelopeOK'), '1', 'saveFailed')
-        check(v('VerifiedDigest'), v('NewDigest'), 'saveFailed')
-        candidate(read('active.json'))
-        check(v('CandidateOK'), '1', 'saveFailed', 'AP205')
-        check(v('CandidateDigest'), v('NewDigest'), 'saveFailed', 'AP205')
+        # One native validation block serves each of the three writes. Order
+        # is staged data -> previous known state -> current data.
+        files = a('list', {'WFItems': [{'WFItemType': 0, 'WFValue': token(name)}
+                    for name in (PENDING, PREVIOUS, ACTIVE)]}, 'Write order')
+        loop, filename = w.each(files)
+        w.set('WriteName', filename)
+        w.set('WriteBody', env)
+        w.set('ExpectedRevision', v('NewDigest'))
+        w.assign('VerifyContents', '1')
+        w.assign('WriteThis', '1')
+        previous = w.if_eq(v('WriteName'), PREVIOUS)
+        available = w.if_eq(v('ActiveValid'), '1')
+        w.set('WriteBody', v('ActiveEnvelope'))
+        w.set('ExpectedRevision', v('ActiveDigest'))
+        w.assign('VerifyContents', '0')
+        w.otherwise(available)
+        w.assign('WriteThis', '0')
+        w.end_if(available)
+        w.end_if(previous)
+        write_this = w.if_eq(v('WriteThis'), '1')
+        final_write = w.if_eq(v('WriteName'), ACTIVE)
+        ensure_unchanged()
+        w.end_if(final_write)
+        save(v('WriteBody'), v('WriteName'))
+        candidate(read(v('WriteName')))
+        code = text('AP4 / ', v('WriteName'))
+        check(v('CandidateOK'), '1', 'saveFailed', code)
+        scalar_check(v('CandidateDigest'), v('ExpectedRevision'), code=code)
+        contents = w.if_eq(v('VerifyContents'), '1')
+        records, identifier = w.each(w.keys(v('Names')))
+        for collection in ('Names', 'Bundles', 'Stores', 'Pins'):
+            scalar_check(get(v('Candidate' + collection), identifier),
+                         get(v(collection), identifier), code=code)
+        w.end_loop(records)
+        for collection in ('Names', 'Bundles', 'Stores', 'Pins'):
+            scalar_check(w.count(w.keys(v('Candidate' + collection))),
+                         w.count(w.keys(v(collection))), code=code)
+        scalar_check(get(v('Candidate'), 'language'), v('Language'), code=code)
+        w.end_if(contents)
+        w.end_if(write_this)
+        w.end_loop(loop)
         w.set('ActiveEnvelope', env)
         w.set('ActiveDigest', v('NewDigest'))
         w.set('DiskDigest', v('NewDigest'))
@@ -253,21 +300,32 @@ def build():
         w.set('NewLanguage', finish(text('🌐 ', L('language'))))
 
     def fetch_language():
-        url = text(get(v('Config'), 'baseURL'), v('NewLanguage'), '.txt')
+        # Fetch the readable JSON already published in the same repository.
+        url = text(get(v('Config'), 'baseURL'), v('NewLanguage'), '.json')
         response = a('downloadurl', {'WFURL': token(url), 'WFHTTPMethod': 'GET'}, 'Download selected language only')
-        inspect(response, 'applist-language-v1')
-        check(v('EnvelopeOK'), '1')
-        check(v('VerifiedDigest'), get(get(get(v('Config'), 'languages'), v('NewLanguage')), 'sha256'))
-        w.set('NextLanguagePayload', v('VerifiedPayload'))
-        raw = decode(v('NextLanguagePayload'))
-        good = w.if_match(raw, FLAT_PATTERN)
+        raw = text(response)
+        good = w.if_match(raw, object_pattern(KEYS))
         w.otherwise(good)
         w.alert(L('invalidData'), stop=True, title=TITLE)
         w.end_if(good)
-        w.set('NextStrings', a('detect.dictionary', {'WFInput': ref(raw)}, 'Selected language'))
+        labels = a('detect.dictionary', {'WFInput': ref(raw)}, 'Selected language')
+        check(w.count(w.keys(labels)), str(len(KEYS)))
+        labels = put(labels, text('_locale'), v('NewLanguage'))
+        labels = put(labels, text('_dataVersion'), get(v('Config'), 'dataVersion'))
+        w.set('NextStrings', labels)
+        a('file.createfolder', {'WFFolder': ref(v('StorageRoot')), 'WFFilePath': 'AppListPro'})
+        save(v('NextStrings'), 'labels.pending.v4.json')
+        labels_candidate(read('labels.pending.v4.json'), v('NewLanguage'))
+        check(v('LabelsOK'), '1', 'saveFailed', 'AP410')
+        old_labels = read(LABELS)
+        old = w.if_has(old_labels)
+        save(old_labels, 'labels.previous.v4.json')
+        w.end_if(old)
+        save(v('NextStrings'), LABELS)
+        labels_candidate(read(LABELS), v('NewLanguage'))
+        check(v('LabelsOK'), '1', 'saveFailed', 'AP411')
         w.set('Language', v('NewLanguage'))
-        w.set('LanguagePayload', v('NextLanguagePayload'))
-        w.set('Strings', v('NextStrings'))
+        w.set('Strings', v('CachedStrings'))
         w.assign('LanguageReady', '1')
 
     def name_check(name, current_id):
@@ -342,19 +400,19 @@ def build():
         """Expensive semantic validation is confined to imports, not every launch."""
         w.assign('ImportOK', '1')
         w.empty_dict('ImportNamesSeen')
-        names = get(v('Candidate'), 'names')
+        names = v('CandidateNames')
         loop, identifier = w.each(w.keys(names))
         w.set('ImportID', identifier)
         guards = [w.if_match(identifier, r'\A[0-9a-f]{64}\z')]
         for field in ('bundles', 'stores', 'pins'):
-            guards.append(exists_key(get(v('Candidate'), field), identifier))
-        bundle = text(get(get(v('Candidate'), 'bundles'), identifier))
+            guards.append(exists_key(v('Candidate' + field.title()), identifier))
+        bundle = text(get(v('CandidateBundles'), identifier))
         name = text(get(names, identifier))
         guards.append(w.if_match(bundle, BUNDLE))
         guards.append(w.if_eq(w.hash(bundle), identifier))
         guards.append(w.if_match(name, NAME))
-        guards.append(w.if_match(get(get(v('Candidate'), 'pins'), identifier), r'\A[01]\z'))
-        guards.append(w.if_match(get(get(v('Candidate'), 'stores'), identifier), r'\A\z|' + STORE))
+        guards.append(w.if_match(get(v('CandidatePins'), identifier), r'\A[01]\z'))
+        guards.append(w.if_match(get(v('CandidateStores'), identifier), r'\A\z|' + STORE))
         duplicate = exists_key(v('ImportNamesSeen'), w.hash(name))
         w.assign('ImportOK', '0')
         w.end_if(duplicate)
@@ -373,7 +431,7 @@ def build():
     w.enable_constants('Constants', 'EmptyText')
     w.set('Strings', get(v('Config'), 'fallback'))
     w.set('StorageRoot', a('file', {'WFFile': FOLDER}, 'Portable iCloud Shortcuts folder'))
-    for var in ('ActiveDigest', 'ActiveEnvelope', 'DiskDigest', 'Language', 'LanguagePayload', 'SharedLink'):
+    for var in ('ActiveDigest', 'ActiveEnvelope', 'DiskDigest', 'Language', 'SharedLink'):
         w.assign(var, '0')
     for var in ('Names', 'Bundles', 'Stores', 'Pins'):
         w.empty_dict(var)
@@ -381,25 +439,22 @@ def build():
     w.assign('LanguageReady', '0')
     w.assign('PendingImport', '0')
     w.assign('Route', 'configure')
-    active_file = read('active.json')
+    w.assign('Recovered', '0')
+    active_file = read(ACTIVE)
     candidate(active_file)
     ready = w.if_eq(v('CandidateOK'), '1')
-    bind()
     w.set('ActiveEnvelope', v('CandidateEnvelope'))
     w.set('ActiveDigest', v('CandidateDigest'))
     w.set('DiskDigest', v('CandidateDigest'))
     w.assign('ActiveValid', '1')
-    w.assign('Route', 'main')
     w.otherwise(ready)
-    previous_file = read('active.previous.json')
+    previous_file = read(PREVIOUS)
     candidate(previous_file)
     previous = w.if_eq(v('CandidateOK'), '1')
-    bind()
     w.set('ActiveEnvelope', v('CandidateEnvelope'))
     w.set('ActiveDigest', v('CandidateDigest'))
     w.assign('ActiveValid', '1')
-    w.assign('Route', 'main')
-    w.alert(L('recovered'), title=TITLE)
+    w.assign('Recovered', '1')
     w.otherwise(previous)
     some_file = w.if_text(text(active_file, previous_file))
     w.alert(L('invalidData'), title=TITLE)
@@ -407,6 +462,14 @@ def build():
     w.end_if(some_file)
     w.end_if(previous)
     w.end_if(ready)
+    loaded = w.if_eq(v('ActiveValid'), '1')
+    bind()
+    load_labels()
+    w.assign('Route', 'main')
+    recovered = w.if_eq(v('Recovered'), '1')
+    w.alert(L('recovered'), title=TITLE)
+    w.end_if(recovered)
+    w.end_if(loaded)
     # Only process incoming content when explicitly launched from a share sheet.
     incoming = {'Type': 'ExtensionInput'}
     shared = w.if_has(incoming)
@@ -427,17 +490,8 @@ def build():
     w.set('PassRoute', v('Route'))
     setup = w.if_eq(v('PassRoute'), 'configure')
     choose_language()
-    fetch_language()
-    pending_import = w.if_eq(v('PendingImport'), '1')
-    # Keep the chosen legacy file in memory while selecting its language.
-    # Do not save an empty list over the previous data during this detour.
-    w.assign('Route', 'importReady')
-    w.otherwise(pending_import)
-    request_save(message='')
-    pending = w.if_match(v('SharedLink'), STORE)
-    w.assign('AfterSave', 'shared')
-    w.end_if(pending)
-    w.end_if(pending_import)
+    w.assign('LanguageSaveMessage', '')
+    w.assign('Route', 'fetchLanguage')
     w.end_if(setup)
 
     recovery = w.if_eq(v('PassRoute'), 'recover')
@@ -613,14 +667,27 @@ def build():
 
     lang = w.if_eq(v('PassRoute'), 'language')
     choose_language()
-    fetch_language()
-    request_save(message='')
+    w.assign('LanguageSaveMessage', '')
+    w.assign('Route', 'fetchLanguage')
     w.end_if(lang)
     reload_lang = w.if_eq(v('PassRoute'), 'reload')
     w.set('NewLanguage', v('Language'))
-    fetch_language()
-    request_save()
+    w.assign('LanguageSaveMessage', 'saved')
+    w.assign('Route', 'fetchLanguage')
     w.end_if(reload_lang)
+    fetch = w.if_eq(v('PassRoute'), 'fetchLanguage')
+    fetch_language()
+    pending_import = w.if_eq(v('PendingImport'), '1')
+    # Selecting a language for a pending import never writes an empty app list.
+    w.assign('Route', 'importReady')
+    w.otherwise(pending_import)
+    request_save(message='')
+    w.set('SaveMessage', v('LanguageSaveMessage'))
+    pending = w.if_match(v('SharedLink'), STORE)
+    w.assign('AfterSave', 'shared')
+    w.end_if(pending)
+    w.end_if(pending_import)
+    w.end_if(fetch)
 
     backups = w.if_eq(v('PassRoute'), 'backups')
     w.set('Route', menu([('📤', 'export', 'export'), ('📂', 'import', 'import'),
@@ -641,7 +708,7 @@ def build():
     resumed_import = w.if_eq(v('PassRoute'), 'importReady')
     w.otherwise(resumed_import)
     restoration = w.if_eq(v('PassRoute'), 'restore')
-    w.set('ImportText', text(read('active.previous.json')))
+    w.set('ImportText', text(read(PREVIOUS)))
     w.otherwise(restoration)
     selected_file = a('file.select', {'SelectMultiple': False}, 'Choose backup or legacy JSON')
     selected_text = a('detect.text', {'WFInput': ref(selected_file)}, 'Read selected JSON contents')
@@ -656,6 +723,7 @@ def build():
     confirmed = menu([('✅', 'import', 'confirm'), ('↩️', 'back', 'back')], L('replaceConfirm'))
     yes = w.if_eq(confirmed, 'confirm')
     bind()
+    load_labels()
     request_save()
     w.otherwise(yes)
     w.set('Route', v('ImportReturn'))
@@ -727,7 +795,7 @@ def build():
     w.end_if(saving)
 
     info = w.if_eq(v('PassRoute'), 'info')
-    w.alert(L('infoBody'), title=TITLE)
+    w.alert(text('AppList Pro ', get(v('Config'), 'version'), '\n\n', L('infoBody')), title=TITLE)
     w.assign('Route', 'manage')
     w.end_if(info)
     cancel = w.if_eq(v('PassRoute'), 'cancel')
@@ -738,6 +806,7 @@ def build():
     boot['values'] = w.constants
     w.actions[top_index]['WFWorkflowActionParameters']['WFItems'] = dictionary_value(boot)
     workflow = w.header()
+    workflow['WFWorkflowName'] = 'AppList Pro beta4'
     workflow['WFWorkflowInputContentItemClasses'] = ['WFURLContentItem']
     workflow['WFWorkflowIcon'] = {'WFWorkflowIconStartColor': 431817727, 'WFWorkflowIconGlyphNumber': 59700}
     return workflow

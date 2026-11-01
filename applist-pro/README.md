@@ -1,116 +1,111 @@
 # AppList Pro
 
-© Sentechtipsvn · 1.1.0-beta.3
+© Sentechtipsvn · 1.1.0-beta.4
 
-A native iOS quick launcher. The first screen is the user's app list: tap an
-app to open it. Pinned apps appear first. Management and Info are secondary.
-The normal launch path reads local data, makes no HTTP request and writes no file.
+A native iOS quick launcher. Apps appear on the first screen, pinned apps first,
+with **Manage** at the bottom. Opening an app does not require a management menu.
+Normal launches make no HTTP request and write no file.
 
-## Dành cho người dùng
+Bản cài đã ký được bàn giao dưới tên `AppList-Pro-1.1-beta4.shortcut`.
 
-1. Cài tệp AppList-Pro-1.1-beta3.shortcut và chạy trong ứng dụng Phím tắt.
-2. Chọn ngôn ngữ. Lần đầu cần mạng để tải đúng một bộ ngôn ngữ từ repo này.
-3. Chọn **Thêm ứng dụng → Tìm theo tên**, tìm và chọn ứng dụng đã cài trên iPhone.
-   Hoặc dán liên kết App Store; cũng có thể chia sẻ liên kết từ App Store vào phím tắt.
-4. Những lần sau, chạy phím tắt rồi chạm tên ứng dụng ngay trên màn hình đầu.
-   Không cần vào menu quản lý để mở ứng dụng.
+## Cài và dùng
 
-Menu chính hiển thị các ứng dụng, mục có ⭐ được ghim lên trước, sau cùng là
-**⚙️ Quản lý**. Trong Quản lý có thêm, sửa/ghim, xoá mục, tìm trên App Store,
-ngôn ngữ, sao lưu/khôi phục và **ℹ️ Info**. Info chứa giới thiệu tính năng và
-hướng dẫn sử dụng bằng ngôn ngữ đã chọn.
+1. Cài tệp beta4; có thể kiểm tra **1.1.0-beta.4** trong Info để phân biệt với
+   các bản trước. Chạy và chọn ngôn ngữ. Lần thiết lập đầu cần mạng.
+2. Chọn **Thêm ứng dụng → Tìm theo tên**, tìm và chọn ứng dụng đã cài. Có thể thêm
+   bằng liên kết App Store hoặc chia sẻ liên kết App Store vào phím tắt.
+3. Chạy lại phím tắt và chạm ứng dụng ngay trên màn hình đầu để mở.
 
-Xoá một mục chỉ xoá khỏi danh sách này, không gỡ ứng dụng khỏi iPhone.
-Tìm trên App Store chỉ mở trang ứng dụng để bạn tự tải. Phím tắt không xác nhận
-được mọi ứng dụng đã cài và không chặn được mọi lỗi của tác vụ Mở ứng dụng.
-Nếu app không mở, kiểm tra ứng dụng đã cài rồi chạy lại phím tắt; bạn vẫn có
-thể sửa hoặc xoá mục trong Quản lý.
+Trong **Quản lý** có thêm, đổi tên, ghim/bỏ ghim, xoá mục, mở trang App Store,
+ngôn ngữ, sao lưu/khôi phục và **Info**. Info chứa phiên bản, giới thiệu tính năng
+và hướng dẫn sử dụng bằng ngôn ngữ đã chọn. Xoá mục không gỡ ứng dụng khỏi iPhone.
+Tìm trên App Store không tự cài ứng dụng. Huỷ hộp thoại sẽ kết thúc phiên.
 
-## Sửa lỗi của beta2
+## Nhập danh sách gốc
 
-Video beta2 trên iPhone xác nhận trình chọn Files đã mở được, nhưng cả thêm
-ứng dụng và nhập danh sách dừng ở tác vụ **Nếu Keys chứa** bị thiếu tham số
-trong giao diện native. Beta3 bỏ toàn bộ điều kiện Contains trên mảng ở phần
-kiểm tra ID. Các khoá ID được kết hợp thành văn bản có dấu phân cách rõ ràng,
-sau đó đối chiếu nguyên dòng bằng regex và điều kiện số lượng kết quả > 0.
+Sau khi chọn ngôn ngữ, vào **Quản lý → Sao lưu và khôi phục → Nhập từ tệp**.
+Chọn `iCloud Drive/AppList Pro/AppList_Pro.json` rồi xác nhận. Tệp gốc có dạng
+`{"Tên ứng dụng":"com.example.App"}`. Tệp gốc không bị sửa hay xoá; một bản được
+lưu trong thư mục dữ liệu trước khi chuyển đổi.
 
-Tác vụ lấy URL được sửa từ mã không tồn tại `detect.urls` sang `detect.link`.
-Mọi mã tác vụ trong bản tạo ra được đối chiếu với các bản tham chiếu độc lập
-ở `config/native-actions.json`; kiểm tra cấu trúc cũng chặn hai mẫu điều kiện
-đã gây lỗi trên thiết bị.
+Nhập là thay toàn bộ danh sách. Danh sách hiện tại được sao lưu trước khi thay.
+Tệp có hai tên dùng cùng Bundle ID, tên không hợp lệ hoặc Bundle ID không hợp lệ
+bị từ chối cả lần nhập, tránh bỏ mất mục âm thầm.
 
-Bộ đọc trạng thái nhận tám thuộc tính ở mọi thứ tự, vẫn kiểm tra kiểu và tên
-thuộc tính, đồng thời chặn thuộc tính trùng hoặc thiếu. Khi danh sách rỗng,
-phần ghi dữ liệu tạo đối tượng JSON `{}` rõ ràng. Dữ liệu mới được chạy qua
-chính bộ đọc trước khi ghi và đọc lại sau khi ghi. Nếu bước tự kiểm tra không
-qua, thông báo có mã AP201 (trước ghi) hoặc AP205 (sau ghi) để xác định bước.
+Beta4 nhận JSON gốc và bản sao lưu xuất bởi beta4. Các tệp nội bộ/bản sao lưu dạng
+mã hoá của beta1–3 không phải định dạng nhập của beta4. Chúng được giữ nguyên;
+để chuyển danh sách trên máy trong video, chọn tệp `AppList_Pro.json` gốc.
+Không cần xoá thư mục iCloud hoặc sửa thủ công phím tắt.
 
-Các phép thử bổ sung thực hiện thiết lập, thêm hoặc nhập, kết thúc phiên rồi
-chạy lại mở ứng dụng. Có kiểm tra thay đổi thứ tự thuộc tính và tình huống ép
-kiểu từ điển rỗng thành không có văn bản. Hai tình huống sau là kiểm tra độ
-bền; chưa có tệp active.json của người dùng để kết luận đó là nguyên nhân
-chính xác của màn hình phục hồi lặp lại trong video. Chúng không thay cho
-việc xác nhận bản beta3 trên iPhone.
+## Thay đổi sau video beta3
 
-## Sửa lỗi trước đó của beta1
+Video xác nhận trình chọn Files và bước xác nhận nhập đã chạy, nhưng cả nhập JSON
+lẫn thiết lập mới đều dừng ở **AP201**, trước khi ghi tệp. Video không cho biết
+chính xác nhánh con nào trong bộ tự kiểm tra thất bại.
 
-Beta2 sửa hai lỗi đã thấy trong video trên iPhone: thiết lập mới báo nhầm
-“Danh sách đã thay đổi ở một phiên khác”, và nút Nhập từ tệp không mở trình
-chọn tệp. Kiểm tra chuỗi rỗng nay dùng số ký tự hoặc định dạng mã kiểm tra;
-nhập tệp dùng tác vụ Select File riêng của iOS hiện hành.
+Beta4 thay lớp lưu này bằng **Dictionary → Save File** gốc của Shortcuts, theo
+cách bản xuất ban đầu dùng. Bộ ghi không tự ghép toàn bộ JSON, không mã hoá
+Base64 và không xác minh dựa trên thứ tự/khoảng trắng của JSON. Hai vế của mọi
+so sánh động được tạo thành Text trước khi dùng trong If. So sánh giá trị có thể
+rỗng, như URL của mục nhập cũ, thêm cùng một tiền tố không rỗng vào cả hai vế.
 
-Nếu bản cũ đã lỗi, cài beta3 rồi chạy. Khi hiện màn hình phục hồi, chọn
-**New list / Danh sách mới** để thiết lập, hoặc **Import from file** để chọn
-JSON cũ/bản sao lưu. Không cần xoá thư mục dữ liệu. Nhập JSON cũ từ màn hình
-phục hồi sẽ giữ tệp đã chọn trong lúc bạn chọn ngôn ngữ, rồi quay lại xác nhận
-nhập. Huỷ trước khi xác nhận không lưu danh sách trống đè lên tệp cũ.
+Dữ liệu ứng dụng và bộ ngôn ngữ được tách riêng. Bộ ngôn ngữ hỏng hoặc không khớp
+không chặn mở ứng dụng: dùng bộ lưu trước nếu khớp, sau đó dùng tiếng Anh có sẵn.
+Có thể tải lại bộ ngôn ngữ trong Sao lưu và khôi phục khi có mạng.
 
-## Chuyển danh sách cũ
+Các lỗi native trước đó vẫn được chặn: không dùng điều kiện Array Contains bị
+thiếu tham số, không dùng kiểm tra tồn tại để suy ra chuỗi có ký tự, không dùng
+cờ mở picker cũ hoặc mã tác vụ `detect.urls` không tồn tại.
 
-Sau thiết lập ngôn ngữ, mở **Quản lý → Sao lưu và khôi phục → Nhập từ tệp**,
-chọn `iCloud Drive/AppList Pro/AppList_Pro.json` của bản cũ. Xác nhận thay danh
-sách. Phím tắt chuyển tên và Bundle ID sang định dạng mới, giữ một bản tệp cũ
-trong thư mục riêng và không sửa hoặc xoá tệp gốc.
+## Dữ liệu và phục hồi
 
-Nhập tệp là thay toàn bộ danh sách, không phải ghép hai danh sách. Danh sách
-hiện tại được sao lưu trước khi thay. Nếu tệp cũ chứa nhiều tên cho cùng một
-Bundle ID hoặc tên không hợp lệ, bản beta từ chối cả lần nhập để tránh tự ý
-làm mất mục. Giữ tệp gốc và kiểm tra các mục trùng trước khi nhập lại.
+Tệp ở `iCloud Drive/Shortcuts/AppListPro/`:
 
-## Sao lưu, khôi phục và ngoại tuyến
+| Tệp | Nội dung |
+| --- | --- |
+| `apps.v4.json` | Danh sách đang dùng |
+| `apps.previous.v4.json` | Trạng thái trước lần thay đổi gần nhất |
+| `apps.pending.v4.json` | Bản ghi tạm được đọc và kiểm tra trước khi thay tệp chính |
+| `labels.v4.json` | Bộ ngôn ngữ đã chọn |
+| `labels.previous.v4.json` | Bộ ngôn ngữ trước đó |
 
-Dữ liệu cá nhân nằm ở `iCloud Drive/Shortcuts/AppListPro/active.json`.
-`active.previous.json` giữ trạng thái trước thay đổi gần nhất; các thao tác
-ghim, đổi tên, đổi ngôn ngữ hoặc nhập dữ liệu đều tính là thay đổi. Muốn giữ
-một bản lâu dài, dùng **Xuất bản sao lưu** và lưu tệp ở nơi bạn chọn.
+Beta4 dùng tên tệp mới; không ghi đè tệp beta1–3. Dữ liệu riêng không được tải lên
+GitHub. Muốn giữ một mốc lâu dài, dùng **Xuất bản sao lưu**. Ghim, đổi tên, nhập,
+xoá mục hoặc đổi ngôn ngữ đều tính là một lần thay đổi. **Khôi phục lần lưu trước**
+cần xác nhận và phục hồi toàn bộ trạng thái trước đó.
 
-**Khôi phục lần lưu trước** phục hồi toàn bộ trạng thái trước đó và cần xác
-nhận. **Nhập từ tệp** nhận bản sao lưu mới hoặc JSON bản cũ. Khi tệp chính bị
-hỏng và bản trước còn hợp lệ, phím tắt dùng bản trước và báo cho bạn. Nếu cả
-hai không hợp lệ, có lựa chọn nhập bản sao lưu, tạo danh sách mới hoặc huỷ.
-Không có thao tác xoá thư mục dữ liệu hàng loạt.
+Ghi dữ liệu theo thứ tự bản tạm → bản trước → bản chính. Bản tạm và bản chính
+được đọc lại, đối chiếu từng giá trị với dữ liệu trong phiên. Tệp chính hỏng sẽ
+được thay bằng bản trước trong bộ nhớ nếu bản đó còn hợp lệ; phím tắt thông báo
+phục hồi. Nếu cả hai hỏng, có lựa chọn nhập, thiết lập mới hoặc huỷ.
 
-Khi tệp iCloud đã có trên máy, mở danh sách dùng dữ liệu lưu sẵn và không
-kiểm tra mạng mỗi lượt. Tải ngôn ngữ, tải lại bộ ngôn ngữ và tìm ứng dụng cần
-mạng. Mạng lỗi giữa lúc tải không thay thế tệp đang dùng. iCloud có thể đồng
-bộ chậm; nên hoàn tất chỉnh sửa trên một máy trước khi chỉnh sửa trên máy khác.
-Huỷ hộp thoại sẽ kết thúc phiên; mục Quay lại dùng để điều hướng trong phiên.
+Thông báo `AP4 / apps.pending.v4.json`, `AP4 / apps.previous.v4.json` hoặc
+`AP4 / apps.v4.json` cho biết tệp không qua kiểm tra sau ghi. `AP410` và `AP411`
+lần lượt chỉ lỗi kiểm tra bản tạm và bản chính của bộ ngôn ngữ. Lỗi quyền truy
+cập hoặc I/O của hệ thống có thể hiển thị trực tiếp từ tác vụ Files.
 
-## Public data and source
+Danh sách dùng được ngoại tuyến khi tệp iCloud đã có trên máy. Tìm ứng dụng,
+tra liên kết và tải ngôn ngữ cần mạng. Kiểm tra revision trước ghi và ngay trước
+thay tệp chính giúp phát hiện thay đổi đã hiện trên máy; không bảo đảm giao dịch
+đồng thời giữa các thiết bị còn chờ iCloud đồng bộ. Nên sửa trên một máy mỗi lúc.
 
-This repository contains interface translations, Info text and reviewed build
-source only. No personal app list is uploaded here. Twenty locale choices are
-retained from the original workflow, including the two English variants.
+## Source and public data
 
-- Edit `config/strings.json`; it is the translation source of truth.
-- `src/catalog.py` exports a separate public package for each locale.
-- `src/build.py` emits the native workflow. Static values are grouped in its
-  first Dictionary; navigation, validation and saving stay in runtime order.
-- `src/audit.py` checks control groups, output references and UTF-16 token ranges.
-- `tests/test_workflow.py` executes the generated graph using simulated iOS I/O
-  and ICU regular expressions. It includes destructive-change and recovery cases.
-- `src/sign.py` signs public generated source through Shortcuty's documented API.
-  Signing is a build step; the installed shortcut never contacts that service.
+Public source, translations and Info text live in this repository. The twenty
+locale choices and existing readable language JSON files are retained. Only the
+selected `.json` file is fetched during setup/change/reload, then cached locally.
+Language content stays under the unchanged `releases/1.1.0-beta.1` path. Updating
+that content requires a new data release; **Reload** does not update the engine.
+
+State schema 4 is a native flat dictionary with eight string fields: `product`,
+`schema`, `language`, `revision`, `namesJSON`, `bundlesJSON`, `storesJSON`, `pinsJSON`.
+The four map values are serialized by native Dictionary-to-Text conversion,
+using an explicit `{}` for empty maps; the outer Dictionary is saved directly.
+JSON grammar, allowed/required keys and matching map counts are checked on read.
+Imports additionally validate every record, Bundle-ID hash and unique name.
+The revision is an opaque concurrency token, not a JSON integrity checksum.
+App IDs use SHA-256 of the Bundle ID, avoiding dotted dictionary-key ambiguity.
+The files are readable JSON, not encrypted storage.
 
 ```sh
 python3 src/build.py
@@ -120,39 +115,15 @@ python3 src/sign.py
 python3 src/audit.py --signed
 ```
 
-The host-side tests require the system ICU library. The optional signed-file
-audit additionally uses Python `lzfse`. Signing requires network access.
+Tests execute the emitted native action graph with simulated I/O and ICU regex.
+They cover separate setup/add/import/relaunch sessions, JSON reformatting, empty
+maps/URLs, save corruption, I/O failures, revision changes, recovery and UI-cache
+failure. Audit checks action identifiers against independent references, text
+comparison operands, control groups, output references and UTF-16 token ranges.
+The signed action graph must equal the inspected source. Signing uses Shortcuty's
+public documented API at build time; the installed shortcut never calls it.
 
-## Data format and technical limits
-
-Each language package is pinned by its payload SHA-256 in the generated
-workflow. **Reload language pack** reloads the compatible package for this
-version; it does not silently replace the shortcut engine. Release paths are
-immutable. Publish a new release and rebuild to change the pinned content.
-The beta3 engine deliberately reuses the unchanged beta1 interface packages.
-
-The active state is one JSON envelope containing a stable Base64 payload and
-its checksum. Only that scalar payload is hashed, so iOS may reformat the outer
-JSON without invalidating the file. Base64 is encoding, not encryption. The
-stored list remains readable to anyone with access to the user's iCloud files.
-
-The payload contains names, original Bundle IDs, App Store links and pin flags.
-Records use a SHA-256 key derived from the Bundle ID, avoiding dotted-key
-ambiguity and accidental collisions between display names. Names are preserved
-in full; subtitles after colons and dashes are not removed.
-
-Saving stages and verifies new data, preserves the old verified state, and
-verifies the final write. A local revision check prevents overwriting a newer
-revision already visible to this session. This is not a transactional database
-or a guarantee against simultaneous writes still awaiting iCloud sync.
-
-The menu loop is bounded to 60 navigation passes, with explicit exit after
-opening an app. It does not recursively run the whole shortcut. More actions
-than the original are needed for management and recovery; action count alone
-is not a performance measurement. Timing and native rendering require device
-testing, particularly on large lists.
-
-This is a beta targeting the user's iOS 18 workflow. Automated graph and signing
-checks are recorded under `qa`; they do not assert actual iPhone execution or
-native-speaker review of every translation. The signed action graph must match
-the inspected generated source before distribution.
+This is an iOS 18 beta. Host-side checks do not establish actual iPhone execution,
+menu rendering or timing. Native open-app errors, such as an app not installed,
+remain system errors; install, edit or remove the relevant entry. Current check
+results and device-verification status are recorded under `qa/`.

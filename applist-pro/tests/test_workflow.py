@@ -1,7 +1,5 @@
 from pathlib import Path
-import base64
 import hashlib
-import itertools
 import json
 import plistlib
 import sys
@@ -9,28 +7,31 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
-from build import build, FORMAT
-from catalog import BASE_URL, LANGUAGES, package
+from build import build, ACTIVE, PREVIOUS, PENDING, LABELS
+from catalog import BASE_URL, DATA_VERSION, LANGUAGES
 from interpreter import File, run
 
 WORKFLOW = build()
 STRINGS = json.loads((ROOT / 'config/strings.json').read_text())
-NETWORK = {BASE_URL + code + '.txt': json.dumps(package(strings)) for code, strings in STRINGS.items()}
+NETWORK = {BASE_URL + code + '.json': json.dumps(strings) for code, strings in STRINGS.items()}
 
 
 def uid(bundle):
     return hashlib.sha256(bundle.encode()).hexdigest()
 
 
-def envelope(state):
-    raw = json.dumps(state, ensure_ascii=False, separators=(',', ':'))
-    payload = base64.b64encode(raw.encode()).decode()
-    return {'format': FORMAT, 'payload': payload, 'sha256': hashlib.sha256(payload.encode()).hexdigest()}
+def native_state(data):
+    fields = {key: data[key] for key in ('product', 'schema', 'language')}
+    fields['revision'] = hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+    for key in ('names', 'bundles', 'stores', 'pins'):
+        fields[key + 'JSON'] = json.dumps(data[key], ensure_ascii=False)
+    for key in set(data) - {'product', 'schema', 'language', 'names', 'bundles', 'stores', 'pins'}:
+        fields[key] = data[key]
+    return fields
 
 
 def state(records=(), lang='vi'):
-    data = {'product': 'applist-pro', 'schema': '2', 'language': lang,
-            'languagePayload': package(STRINGS[lang])['payload'],
+    data = {'product': 'applist-pro', 'schema': '4', 'language': lang,
             'names': {}, 'bundles': {}, 'stores': {}, 'pins': {}}
     for name, bundle, pin in records:
         key = uid(bundle)
@@ -42,16 +43,23 @@ def state(records=(), lang='vi'):
 
 
 def file_of(data):
-    return File('active.json', json.dumps(envelope(data)))
+    return File(ACTIVE, json.dumps(native_state(data)))
+
+
+def cache_of(lang='vi'):
+    return File(LABELS, json.dumps({**STRINGS[lang], '_locale': lang, '_dataVersion': DATA_VERSION}))
 
 
 def disk_of(data):
-    return {'AppListPro/active.json': file_of(data)}
+    return {'AppListPro/' + ACTIVE: file_of(data), 'AppListPro/' + LABELS: cache_of(data['language'])}
 
 
 def read_state(result):
-    env = json.loads(result['disk']['AppListPro/active.json'].body)
-    return json.loads(base64.b64decode(env['payload']))
+    raw = json.loads(result['disk']['AppListPro/' + ACTIVE].body)
+    data = {key: raw[key] for key in ('product', 'schema', 'language')}
+    for key in ('names', 'bundles', 'stores', 'pins'):
+        data[key] = json.loads(raw[key + 'JSON'])
+    return data
 
 
 RECORDS = [('Messenger', 'com.facebook.Messenger', '0'),
@@ -64,7 +72,7 @@ APP = {'name': 'Google Maps - Transit & Food', 'bundle': 'com.google.Maps',
 class NativeFlowTests(unittest.TestCase):
     def test_first_setup_fetches_one_language_and_returns_to_app_list(self):
         r = run(WORKFLOW, menus=['vi', 'manage', 'main'], network=NETWORK, rewrite_json=True)
-        self.assertEqual(r['requests'], [BASE_URL + 'vi.txt'])
+        self.assertEqual(r['requests'], [BASE_URL + 'vi.json'])
         self.assertEqual(read_state(r)['language'], 'vi')
         self.assertIn('➕ Thêm ứng dụng', r['menus'][1]['options'])
         self.assertEqual(r['menus'][1]['options'][-1], '⚙️ Quản lý')
@@ -73,31 +81,31 @@ class NativeFlowTests(unittest.TestCase):
         self.assertEqual(r['menus'][0]['options'][0], 'Tiếng Việt')
 
     def test_new_list_from_recovery_does_not_report_false_concurrent_change(self):
-        broken = File('active.json', '{"format":"truncated')
+        broken = File(ACTIVE, '{"format":"truncated')
         r = run(WORKFLOW, menus=['configure', 'vi'], network=NETWORK,
-                disk={'AppListPro/active.json': broken}, rewrite_json=True)
+                disk={'AppListPro/' + ACTIVE: broken}, rewrite_json=True)
         self.assertEqual(read_state(r)['names'], {})
         self.assertNotIn(STRINGS['vi']['changedElsewhere'], r['alerts'])
-        self.assertEqual(r['disk']['AppListPro/unreadable-before-reset.json'].body, broken.body)
+        self.assertEqual(r['disk']['AppListPro/unreadable-before-reset.v4.json'].body, broken.body)
 
     def test_legacy_import_from_recovery_keeps_selection_through_language_setup(self):
-        broken = File('active.json', '{"format":"truncated')
+        broken = File(ACTIVE, '{"format":"truncated')
         legacy = File('AppList_Pro.json', '{"Safari":"com.apple.mobilesafari"}')
         r = run(WORKFLOW, menus=['import', 'vi', 'confirm'], files=[legacy], network=NETWORK,
-                disk={'AppListPro/active.json': broken}, rewrite_json=True)
+                disk={'AppListPro/' + ACTIVE: broken}, rewrite_json=True)
         self.assertEqual(set(read_state(r)['names'].values()), {'Safari'})
         self.assertEqual(r['filePickers'], 1)
         self.assertEqual(r['ignoredLegacyPickers'], 0)
-        self.assertEqual(r['disk']['AppListPro/unreadable-before-reset.json'].body, broken.body)
+        self.assertEqual(r['disk']['AppListPro/unreadable-before-reset.v4.json'].body, broken.body)
         self.assertEqual(json.loads(r['disk']['AppListPro/legacy-import-original.json'].body), json.loads(legacy.body))
 
     def test_pending_legacy_import_cancelled_at_confirmation_never_saves_empty_list(self):
-        broken = File('active.json', '{"format":"truncated')
+        broken = File(ACTIVE, '{"format":"truncated')
         legacy = File('AppList_Pro.json', '{"Safari":"com.apple.mobilesafari"}')
         r = run(WORKFLOW, menus=['import', 'vi', 'back', 'cancel'], files=[legacy], network=NETWORK,
-                disk={'AppListPro/active.json': broken})
-        self.assertEqual(r['writes'], [])
-        self.assertEqual(r['disk']['AppListPro/active.json'], broken)
+                disk={'AppListPro/' + ACTIVE: broken})
+        self.assertFalse(any(path in r['writes'] for path in ['AppListPro/' + name for name in (ACTIVE, PREVIOUS, PENDING)]))
+        self.assertEqual(r['disk']['AppListPro/' + ACTIVE], broken)
 
     def test_cancel_native_file_picker_keeps_data_and_does_not_show_invalid_json(self):
         r = run(WORKFLOW, menus=['manage', 'backups', 'import'], files=[None], disk=disk_of(state(RECORDS)))
@@ -114,8 +122,8 @@ class NativeFlowTests(unittest.TestCase):
 
     def test_modern_backup_from_recovery_does_not_require_network_or_language_setup(self):
         backup = file_of(state(RECORDS))
-        broken = File('active.json', '{"format":"truncated')
-        r = run(WORKFLOW, menus=['import', 'confirm'], files=[backup], disk={'AppListPro/active.json': broken})
+        broken = File(ACTIVE, '{"format":"truncated')
+        r = run(WORKFLOW, menus=['import', 'confirm'], files=[backup], disk={'AppListPro/' + ACTIVE: broken})
         self.assertEqual(read_state(r)['names'], state(RECORDS)['names'])
         self.assertEqual(r['requests'], [])
         self.assertEqual(r['filePickers'], 1)
@@ -272,19 +280,19 @@ class NativeFlowTests(unittest.TestCase):
         self.assertEqual(r['requests'], [])
 
     def test_bad_active_recovers_from_previous_and_main_stays_outermost(self):
-        for bad in ['{"format":"truncated', '{"format":"applist-active-v2"}', json.dumps({**envelope(state(RECORDS)), 'sha256': '0'*64})]:
-            disk = {'AppListPro/active.json': File('active.json', bad), 'AppListPro/active.previous.json': file_of(state(RECORDS))}
+        for bad in ['{"format":"truncated', '{"format":"applist-active-v2"}', json.dumps({**native_state(state(RECORDS)), 'revision': 'invalid'})]:
+            disk = {'AppListPro/' + ACTIVE: File(ACTIVE, bad), 'AppListPro/' + PREVIOUS: file_of(state(RECORDS)), 'AppListPro/' + LABELS: cache_of()}
             r = run(WORKFLOW, menus=[uid('com.facebook.Messenger')], disk=disk)
             self.assertEqual(r['opened'], ['com.facebook.Messenger'])
             self.assertEqual(r['alerts'], [STRINGS['vi']['recovered']])
             self.assertEqual(r['writes'], [])
 
-    def test_all_six_outer_key_orders_are_accepted(self):
-        env = envelope(state(RECORDS))
-        for order in itertools.permutations(env):
+    def test_native_file_key_order_is_not_significant(self):
+        env = native_state(state(RECORDS))
+        for order in [list(env), list(reversed(env)), sorted(env)]:
             with self.subTest(order=order):
-                file = File('active.json', json.dumps({k: env[k] for k in order}, indent=2))
-                r = run(WORKFLOW, menus=[uid('com.facebook.Messenger')], disk={'AppListPro/active.json': file})
+                file = File(ACTIVE, json.dumps({k: env[k] for k in order}, indent=2))
+                r = run(WORKFLOW, menus=[uid('com.facebook.Messenger')], disk={'AppListPro/' + ACTIVE: file})
                 self.assertEqual(r['opened'], ['com.facebook.Messenger'])
 
     def test_wrong_state_schema_rejected_before_open(self):
@@ -314,13 +322,13 @@ class NativeFlowTests(unittest.TestCase):
         self.assertEqual(r['writes'], [])
 
     def test_bad_staged_write_never_replaces_active(self):
-        r = run(WORKFLOW, menus=['manage', 'pickEdit', uid('com.facebook.Messenger'), 'pin'], disk=disk_of(state(RECORDS)), corrupt_save='AppListPro/active.pending.json')
+        r = run(WORKFLOW, menus=['manage', 'pickEdit', uid('com.facebook.Messenger'), 'pin'], disk=disk_of(state(RECORDS)), corrupt_save='AppListPro/' + PENDING)
         self.assertEqual(read_state(r), state(RECORDS))
-        self.assertNotIn('AppListPro/active.json', r['writes'])
-        self.assertIn(STRINGS['vi']['saveFailed'], r['alerts'])
+        self.assertNotIn('AppListPro/' + ACTIVE, r['writes'])
+        self.assertTrue(any(STRINGS['vi']['saveFailed'] in alert for alert in r['alerts']))
 
     def test_io_failure_keeps_current_or_verified_previous_file(self):
-        for path in ['AppListPro/active.pending.json', 'AppListPro/active.previous.json', 'AppListPro/active.json']:
+        for path in ['AppListPro/' + PENDING, 'AppListPro/' + PREVIOUS, 'AppListPro/' + ACTIVE]:
             with self.subTest(path=path):
                 r = run(WORKFLOW, menus=['manage', 'pickEdit', uid('com.facebook.Messenger'), 'pin'], disk=disk_of(state(RECORDS)), fail_save=path)
                 self.assertEqual(r['status'], 'io-error')
@@ -328,12 +336,12 @@ class NativeFlowTests(unittest.TestCase):
 
     def test_changed_local_revision_is_not_overwritten(self):
         def update_other_session(path, result):
-            if path == 'AppListPro/active.json' and result['reads'].count(path) == 2:
+            if path == 'AppListPro/' + ACTIVE and result['reads'].count(path) == 2:
                 result['disk'][path] = file_of(state(RECORDS + [('Other', 'com.other.App', '0')]))
         r = run(WORKFLOW, menus=['manage', 'pickEdit', uid('com.facebook.Messenger'), 'pin'], disk=disk_of(state(RECORDS)), on_read=update_other_session)
         self.assertIn(uid('com.other.App'), read_state(r)['names'])
         self.assertEqual(r['writes'], [])
-        self.assertIn(STRINGS['vi']['changedElsewhere'], r['alerts'])
+        self.assertTrue(any(STRINGS['vi']['changedElsewhere'] in alert for alert in r['alerts']))
 
     def test_network_failure_switching_language_preserves_current(self):
         r = run(WORKFLOW, menus=['manage', 'language', 'ja'], disk=disk_of(state(RECORDS)), network={})
@@ -345,7 +353,7 @@ class NativeFlowTests(unittest.TestCase):
         for lang in LANGUAGES:
             with self.subTest(lang=lang):
                 r = run(WORKFLOW, menus=['manage', 'info'], disk=disk_of(state(RECORDS, lang)), rewrite_json=True)
-                self.assertIn(STRINGS[lang]['infoBody'], r['alerts'])
+                self.assertTrue(any(STRINGS[lang]['infoBody'] in alert for alert in r['alerts']))
                 self.assertEqual(r['requests'], [])
                 self.assertEqual(r['writes'], [])
 
@@ -354,6 +362,94 @@ class NativeFlowTests(unittest.TestCase):
         self.assertEqual(len(r['exports']), 1)
         self.assertEqual(r['requests'], [])
         self.assertEqual(r['writes'], [])
+
+    def test_missing_damaged_or_mismatched_language_cache_cannot_block_launch(self):
+        for cache in [None, File(LABELS, '{truncated'), cache_of('ja')]:
+            with self.subTest(cache=cache):
+                disk = disk_of(state(RECORDS))
+                disk.pop('AppListPro/' + LABELS)
+                if cache:
+                    disk['AppListPro/' + LABELS] = cache
+                r = run(WORKFLOW, menus=[uid(RECORDS[0][1])], disk=disk)
+                self.assertEqual(r['opened'], [RECORDS[0][1]])
+                self.assertEqual(r['alerts'], [])
+                self.assertEqual(r['requests'], [])
+                self.assertEqual(r['writes'], [])
+
+    def test_previous_language_cache_is_used_before_english_fallback(self):
+        disk = disk_of(state(RECORDS))
+        disk['AppListPro/' + LABELS] = File(LABELS, '{}')
+        disk['AppListPro/labels.previous.v4.json'] = cache_of()
+        r = run(WORKFLOW, menus=[uid(RECORDS[0][1])], disk=disk)
+        self.assertEqual(r['menus'][0]['options'][-1], '⚙️ Quản lý')
+        self.assertEqual(r['requests'], [])
+
+    def test_old_beta_files_are_preserved_during_fresh_setup(self):
+        old = File('active.json', '{"format":"applist-active-v2","payload":"old"}')
+        r = run(WORKFLOW, menus=['vi'], network=NETWORK, disk={'AppListPro/active.json': old})
+        self.assertEqual(r['disk']['AppListPro/active.json'], old)
+        self.assertEqual(read_state(r)['names'], {})
+        self.assertEqual(r['alerts'], [])
+
+    def test_staged_valid_json_with_wrong_value_is_rejected_before_replace(self):
+        def corrupt(path, file):
+            if path == 'AppListPro/' + PENDING:
+                data = json.loads(file.body)
+                names = json.loads(data['namesJSON'])
+                names[uid(RECORDS[0][1])] = 'Unexpected change'
+                data['namesJSON'] = json.dumps(names)
+                return File(file.name, json.dumps(data))
+            return file
+        r = run(WORKFLOW, menus=['manage', 'pickEdit', uid(RECORDS[0][1]), 'pin'],
+                disk=disk_of(state(RECORDS)), corrupt_save=corrupt)
+        self.assertNotIn('AppListPro/' + ACTIVE, r['writes'])
+        self.assertNotIn('AppListPro/' + PREVIOUS, r['writes'])
+        self.assertEqual(read_state(r), state(RECORDS))
+        self.assertTrue(any('AP4 / ' + PENDING in alert for alert in r['alerts']))
+
+    def test_failed_final_write_can_recover_the_verified_previous_list(self):
+        first = run(WORKFLOW, menus=['manage', 'pickEdit', uid(RECORDS[0][1]), 'pin'],
+                    disk=disk_of(state(RECORDS)), corrupt_save='AppListPro/' + ACTIVE)
+        self.assertTrue(any('AP4 / ' + ACTIVE in alert for alert in first['alerts']))
+        again = run(WORKFLOW, menus=[uid(RECORDS[0][1])], disk=first['disk'])
+        self.assertEqual(again['opened'], [RECORDS[0][1]])
+        self.assertIn(STRINGS['vi']['recovered'], again['alerts'])
+
+    def test_concurrent_revision_after_staging_is_not_overwritten(self):
+        def update_other_session(path, result):
+            if path == 'AppListPro/' + ACTIVE and result['reads'].count(path) == 3:
+                result['disk'][path] = file_of(state(RECORDS + [('Other', 'com.other.App', '0')]))
+        r = run(WORKFLOW, menus=['manage', 'pickEdit', uid(RECORDS[0][1]), 'pin'],
+                disk=disk_of(state(RECORDS)), on_read=update_other_session)
+        self.assertNotIn('AppListPro/' + ACTIVE, r['writes'])
+        self.assertIn(uid('com.other.App'), read_state(r)['names'])
+        self.assertIn(STRINGS['vi']['changedElsewhere'], r['alerts'])
+
+    def test_exported_native_backup_can_be_imported_offline_after_file_reformatting(self):
+        first = run(WORKFLOW, menus=['manage', 'backups', 'export'], disk=disk_of(state(RECORDS)))
+        backup = json.loads(first['exports'][0].body)
+        file = File('backup.json', json.dumps(backup, ensure_ascii=True, indent=4).replace('/', '\\/'))
+        second = run(WORKFLOW, menus=['manage', 'backups', 'import', 'confirm'], files=[file],
+                     disk=disk_of(state()))
+        self.assertEqual(read_state(second), state(RECORDS))
+        self.assertEqual(second['requests'], [])
+
+    def test_switching_language_is_cached_for_the_next_launch(self):
+        first = run(WORKFLOW, menus=['manage', 'language', 'ja'], network=NETWORK, disk=disk_of(state(RECORDS)))
+        self.assertEqual(first['requests'], [BASE_URL + 'ja.json'])
+        self.assertEqual(read_state(first)['language'], 'ja')
+        again = run(WORKFLOW, menus=['manage', 'info'], disk=first['disk'])
+        self.assertTrue(any(STRINGS['ja']['infoBody'] in alert for alert in again['alerts']))
+        self.assertEqual(again['requests'], [])
+
+    def test_duplicate_state_fields_are_rejected_before_key_lookup(self):
+        data = native_state(state(RECORDS))
+        data.pop('revision')
+        raw = json.dumps(data)[:-1] + ',"schema":"4"}'
+        r = run(WORKFLOW, menus=['cancel'], disk={'AppListPro/' + ACTIVE: File(ACTIVE, raw)})
+        self.assertEqual(r['opened'], [])
+        self.assertEqual(r['writes'], [])
+        self.assertTrue(r['alerts'])
 
 
 if __name__ == '__main__':
