@@ -1,0 +1,128 @@
+{
+  "ar": {
+    "name": "العربية",
+    "apple": "ar_AE",
+    "speech": "ar-SA",
+    "minIOS": 18
+  },
+  "zh-Hans": {
+    "name": "简体中文",
+    "apple": "zh_CN",
+    "speech": "zh-CN",
+    "minIOS": 18
+  },
+  "zh-Hant": {
+    "name": "繁體中文",
+    "apple": "zh_TW",
+    "speech": "zh-TW",
+    "minIOS": 18
+  },
+  "nl": {
+    "name": "Nederlands",
+    "apple": "nl_NL",
+    "speech": "nl-NL",
+    "minIOS": 18
+  },
+  "en-GB": {
+    "name": "English (UK)",
+    "apple": "en_GB",
+    "speech": "en-GB",
+    "minIOS": 18
+  },
+  "en": {
+    "name": "English (US)",
+    "apple": "en_US",
+    "speech": "en-US",
+    "minIOS": 18
+  },
+  "fr": {
+    "name": "Français",
+    "apple": "fr_FR",
+    "speech": "fr-FR",
+    "minIOS": 18
+  },
+  "de": {
+    "name": "Deutsch",
+    "apple": "de_DE",
+    "speech": "de-DE",
+    "minIOS": 18
+  },
+  "hi": {
+    "name": "हिन्दी",
+    "apple": "hi_IN",
+    "speech": "hi-IN",
+    "minIOS": 27
+  },
+  "id": {
+    "name": "Bahasa Indonesia",
+    "apple": "id_ID",
+    "speech": "id-ID",
+    "minIOS": 18
+  },
+  "it": {
+    "name": "Italiano",
+    "apple": "it_IT",
+    "speech": "it-IT",
+    "minIOS": 18
+  },
+  "ja": {
+    "name": "日本語",
+    "apple": "ja_JP",
+    "speech": "ja-JP",
+    "minIOS": 18
+  },
+  "ko": {
+    "name": "한국어",
+    "apple": "ko_KR",
+    "speech": "ko-KR",
+    "minIOS": 18
+  },
+  "pl": {
+    "name": "Polski",
+    "apple": "pl_PL",
+    "speech": "pl-PL",
+    "minIOS": 18
+  },
+  "pt-BR": {
+    "name": "Português (Brasil)",
+    "apple": "pt_BR",
+    "speech": "pt-BR",
+    "minIOS": 18
+  },
+  "ru": {
+    "name": "Русский",
+    "apple": "ru_RU",
+    "speech": "ru-RU",
+    "minIOS": 18
+  },
+  "es": {
+    "name": "Español",
+    "apple": "es_ES",
+    "speech": "es-ES",
+    "minIOS": 18
+  },
+  "th": {
+    "name": "ไทย",
+    "apple": "th_TH",
+    "speech": "th-TH",
+    "minIOS": 18
+  },
+  "tr": {
+    "name": "Türkçe",
+    "apple": "tr_TR",
+    "speech": "tr-TR",
+    "minIOS": 18
+  },
+  "uk": {
+    "name": "Українська",
+    "apple": "uk_UA",
+    "speech": "uk-UA",
+    "minIOS": 18
+  },
+  "vi": {
+    "name": "Tiếng Việt",
+    "apple": "vi_VN",
+    "speech": "vi-VN",
+    "minIOS": 18
+  }
+}

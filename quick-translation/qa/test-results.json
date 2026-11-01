@@ -1,0 +1,12 @@
+{
+  "version": "1.0-beta1",
+  "tests": 80,
+  "failures": 0,
+  "errors": 0,
+  "passed": true,
+  "nativeDeviceVerified": false,
+  "liveAppleTranslationCalls": 0,
+  "ocrIsSimulated": true,
+  "PDFNativeIOIsSimulated": true,
+  "screenCaptureIsSimulated": true
+}

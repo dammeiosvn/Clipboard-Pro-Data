@@ -1,0 +1,36 @@
+{
+  "version": "1.0-beta1",
+  "workflows": {
+    "Quick-Translation": {
+      "actions": 3659,
+      "nativeIdentifiers": 53,
+      "balancedControls": true,
+      "uniqueUUIDs": true,
+      "noForwardActionReferences": true,
+      "validUTF16Spans": 1373,
+      "noPersonalBookmarks": true,
+      "noEmbeddedLocalePacks": true,
+      "noDirectTranslationHTTP": true,
+      "noAutomaticClipboardRead": true,
+      "signedGraphEqual": true,
+      "signedBytes": 222920,
+      "signedSHA256": "2d60485de450c13d6096b589e4c112167a03bdf5e01930e177333c0996cd61f5"
+    },
+    "Quick-Translation-Screen": {
+      "actions": 4,
+      "nativeIdentifiers": 4,
+      "balancedControls": true,
+      "uniqueUUIDs": true,
+      "noForwardActionReferences": true,
+      "validUTF16Spans": 0,
+      "noPersonalBookmarks": true,
+      "noEmbeddedLocalePacks": false,
+      "noDirectTranslationHTTP": true,
+      "noAutomaticClipboardRead": true,
+      "signedGraphEqual": true,
+      "signedBytes": 22283,
+      "signedSHA256": "d8bc3253bbe19c432e28b8d5b05a5b1b03b74246e0b46d4cc6a6c3523765dcf3"
+    }
+  },
+  "nativeDeviceVerified": false
+}

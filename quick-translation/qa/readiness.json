@@ -1,0 +1,26 @@
+{
+  "version": "1.0-beta1",
+  "hostChecks": "See test-results.json and structural-audit.json",
+  "resourceGenerationReproducible": true,
+  "resourceBytes": {
+    "resources/v1/catalog.json": 3662,
+    "resources/v1/ui/en.json": 10214,
+    "resources/v1/ui/vi.json": 11948
+  },
+  "originalActions": 93,
+  "originalSignedBytes": 1474490,
+  "nativeDeviceVerified": false,
+  "liveAppleTranslationCalls": 0,
+  "deviceAcceptanceRequired": [
+    "main direct launch and first setup permissions",
+    "Back Tap and AssistiveTouch screen capture before UI",
+    "native Apple source/target language codes",
+    "mixed scanned/text PDF and UTF-8 TXT",
+    "long Quick Look text and simple bilingual PDF output",
+    "offline native translation with downloaded languages"
+  ],
+  "legacyFilesUntouched": true,
+  "noAPIKey": true,
+  "noDirectHTTPTranslation": true,
+  "captureHelperRunsMainByExactName": "Quick-Translation"
+}

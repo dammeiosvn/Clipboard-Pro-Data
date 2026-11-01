@@ -1,0 +1,16 @@
+{
+  "version": "1.0-beta1",
+  "workflows": {
+    "Quick-Translation": {
+      "actions": 3659,
+      "binaryBytes": 519666,
+      "unsignedSHA256": "5cd4d8654df1343d87191cd285ce2fbb13d671b31d836dac3ea781c5ba0d7dce"
+    },
+    "Quick-Translation-Screen": {
+      "actions": 4,
+      "binaryBytes": 1875,
+      "unsignedSHA256": "3ba0b3387fc54c1f830befa721d1c772c6f4330e2d292a490457d3ed610a5279"
+    }
+  },
+  "nativeDeviceVerified": false
+}
