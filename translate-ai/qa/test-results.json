@@ -1,0 +1,9 @@
+{
+  "tests": 60,
+  "failures": 0,
+  "errors": 0,
+  "passed": true,
+  "nativeDeviceVerified": false,
+  "providerLiveCalls": 0,
+  "ocrIsSimulated": true
+}

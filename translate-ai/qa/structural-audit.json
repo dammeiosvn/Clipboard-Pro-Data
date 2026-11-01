@@ -1,0 +1,17 @@
+{
+  "balancedControlFlow": true,
+  "uniqueUUIDs": true,
+  "validUTF16Spans": 1031,
+  "forwardReferencesAbsent": true,
+  "nativeIdentifiers": 44,
+  "singlePinnedDeepSeekPOST": true,
+  "nativeJSONRequestShapeVerified": true,
+  "personalBookmarksRemoved": true,
+  "noEmbeddedCredential": true,
+  "clipboardWriteRequiresResultMenu": true,
+  "actions": 2404,
+  "nativeDeviceVerified": false,
+  "signedActionGraphEqual": true,
+  "signedBytes": 174355,
+  "signedSHA256": "cc74a72e5141b883ab219f5d7d0551246eb7b87597dccc03e7404388e8d403cf"
+}

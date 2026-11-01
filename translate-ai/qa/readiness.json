@@ -1,0 +1,26 @@
+{
+  "version": "2.0-beta1",
+  "baselineActionCount": 49,
+  "scope": [
+    "Portable native settings with verified writes and fallback",
+    "Text/share/clipboard/images/screenshots/camera/Files sources",
+    "On-device OCR with editable text and no image upload",
+    "20 target languages; separate Vietnamese/English interface",
+    "Faithful/natural prompt; names and numbers preserved by instruction",
+    "Bounded text sections with completion validation and manual retry",
+    "Explicit save, literal history search and offline cache reuse",
+    "Session-only key by default; explicit readable TXT opt-in",
+    "Native result/copy/read-aloud/export menus"
+  ],
+  "nativeDeviceVerified": false,
+  "liveProviderCalls": 0,
+  "hostTests": "qa/test-results.json",
+  "graphAudit": "qa/structural-audit.json",
+  "limits": [
+    "Native transport/I/O failures may stop the system action directly",
+    "OCR and translation quality require device/provider testing",
+    "No app-level password encryption or Keychain companion",
+    "No automatic import of the old unstructured TXT history",
+    "iCloud multi-device settings follow file-sync semantics"
+  ]
+}

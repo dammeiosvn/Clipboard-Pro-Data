@@ -1,0 +1,102 @@
+{
+  "vi": {
+    "name": "Tiếng Việt",
+    "english": "Vietnamese",
+    "speech": "vi-VN"
+  },
+  "en": {
+    "name": "English",
+    "english": "English",
+    "speech": "en-US"
+  },
+  "en-GB": {
+    "name": "English (UK)",
+    "english": "British English",
+    "speech": "en-GB"
+  },
+  "ja": {
+    "name": "日本語",
+    "english": "Japanese",
+    "speech": "ja-JP"
+  },
+  "ko": {
+    "name": "한국어",
+    "english": "Korean",
+    "speech": "ko-KR"
+  },
+  "zh-Hans": {
+    "name": "简体中文",
+    "english": "Simplified Chinese",
+    "speech": "zh-CN"
+  },
+  "zh-Hant": {
+    "name": "繁體中文",
+    "english": "Traditional Chinese",
+    "speech": "zh-TW"
+  },
+  "fr": {
+    "name": "Français",
+    "english": "French",
+    "speech": "fr-FR"
+  },
+  "de": {
+    "name": "Deutsch",
+    "english": "German",
+    "speech": "de-DE"
+  },
+  "ru": {
+    "name": "Русский",
+    "english": "Russian",
+    "speech": "ru-RU"
+  },
+  "es": {
+    "name": "Español",
+    "english": "Spanish",
+    "speech": "es-ES"
+  },
+  "th": {
+    "name": "ไทย",
+    "english": "Thai",
+    "speech": "th-TH"
+  },
+  "id": {
+    "name": "Bahasa Indonesia",
+    "english": "Indonesian",
+    "speech": "id-ID"
+  },
+  "tr": {
+    "name": "Türkçe",
+    "english": "Turkish",
+    "speech": "tr-TR"
+  },
+  "it": {
+    "name": "Italiano",
+    "english": "Italian",
+    "speech": "it-IT"
+  },
+  "pt-BR": {
+    "name": "Português (Brasil)",
+    "english": "Brazilian Portuguese",
+    "speech": "pt-BR"
+  },
+  "hi": {
+    "name": "हिन्दी",
+    "english": "Hindi",
+    "speech": "hi-IN"
+  },
+  "ar": {
+    "name": "العربية",
+    "english": "Arabic",
+    "speech": "ar-SA"
+  },
+  "nl": {
+    "name": "Nederlands",
+    "english": "Dutch",
+    "speech": "nl-NL"
+  },
+  "pl": {
+    "name": "Polski",
+    "english": "Polish",
+    "speech": "pl-PL"
+  }
+}
