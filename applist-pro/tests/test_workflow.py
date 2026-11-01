@@ -69,6 +69,56 @@ class NativeFlowTests(unittest.TestCase):
         self.assertIn('➕ Thêm ứng dụng', r['menus'][1]['options'])
         self.assertEqual(r['menus'][1]['options'][-1], '⚙️ Quản lý')
         self.assertNotIn('vi', r['menus'][0]['options'])
+        self.assertEqual(r['alerts'], [])
+        self.assertEqual(r['menus'][0]['options'][0], 'Tiếng Việt')
+
+    def test_new_list_from_recovery_does_not_report_false_concurrent_change(self):
+        broken = File('active.json', '{"format":"truncated')
+        r = run(WORKFLOW, menus=['configure', 'vi'], network=NETWORK,
+                disk={'AppListPro/active.json': broken}, rewrite_json=True)
+        self.assertEqual(read_state(r)['names'], {})
+        self.assertNotIn(STRINGS['vi']['changedElsewhere'], r['alerts'])
+        self.assertEqual(r['disk']['AppListPro/unreadable-before-reset.json'].body, broken.body)
+
+    def test_legacy_import_from_recovery_keeps_selection_through_language_setup(self):
+        broken = File('active.json', '{"format":"truncated')
+        legacy = File('AppList_Pro.json', '{"Safari":"com.apple.mobilesafari"}')
+        r = run(WORKFLOW, menus=['import', 'vi', 'confirm'], files=[legacy], network=NETWORK,
+                disk={'AppListPro/active.json': broken}, rewrite_json=True)
+        self.assertEqual(set(read_state(r)['names'].values()), {'Safari'})
+        self.assertEqual(r['filePickers'], 1)
+        self.assertEqual(r['ignoredLegacyPickers'], 0)
+        self.assertEqual(r['disk']['AppListPro/unreadable-before-reset.json'].body, broken.body)
+        self.assertEqual(json.loads(r['disk']['AppListPro/legacy-import-original.json'].body), json.loads(legacy.body))
+
+    def test_pending_legacy_import_cancelled_at_confirmation_never_saves_empty_list(self):
+        broken = File('active.json', '{"format":"truncated')
+        legacy = File('AppList_Pro.json', '{"Safari":"com.apple.mobilesafari"}')
+        r = run(WORKFLOW, menus=['import', 'vi', 'back', 'cancel'], files=[legacy], network=NETWORK,
+                disk={'AppListPro/active.json': broken})
+        self.assertEqual(r['writes'], [])
+        self.assertEqual(r['disk']['AppListPro/active.json'], broken)
+
+    def test_cancel_native_file_picker_keeps_data_and_does_not_show_invalid_json(self):
+        r = run(WORKFLOW, menus=['manage', 'backups', 'import'], files=[None], disk=disk_of(state(RECORDS)))
+        self.assertEqual(r['status'], 'cancelled')
+        self.assertEqual(r['filePickers'], 1)
+        self.assertEqual(r['writes'], [])
+        self.assertEqual(r['alerts'], [])
+
+    def test_import_accepts_utf8_bom_from_files(self):
+        legacy = File('AppList_Pro.json', '\ufeff{"Safari":"com.apple.mobilesafari"}')
+        r = run(WORKFLOW, menus=['manage', 'backups', 'import', 'confirm'], files=[legacy], disk=disk_of(state(RECORDS)))
+        self.assertEqual(set(read_state(r)['names'].values()), {'Safari'})
+        self.assertEqual(r['filePickers'], 1)
+
+    def test_modern_backup_from_recovery_does_not_require_network_or_language_setup(self):
+        backup = file_of(state(RECORDS))
+        broken = File('active.json', '{"format":"truncated')
+        r = run(WORKFLOW, menus=['import', 'confirm'], files=[backup], disk={'AppListPro/active.json': broken})
+        self.assertEqual(read_state(r)['names'], state(RECORDS)['names'])
+        self.assertEqual(r['requests'], [])
+        self.assertEqual(r['filePickers'], 1)
 
     def test_direct_launch_is_first_menu_without_network_or_writes(self):
         r = run(WORKFLOW, menus=[uid('com.facebook.Messenger')], disk=disk_of(state(RECORDS)), rewrite_json=True)

@@ -8,7 +8,7 @@ import sys
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-SIGNED = ROOT / 'dist/AppList-Pro-1.1-beta1.shortcut'
+SIGNED = ROOT / 'dist/AppList-Pro-1.1-beta2.shortcut'
 
 
 def walk(value):
@@ -62,6 +62,16 @@ def audit(signed=False):
     assert workflow['WFWorkflowInputContentItemClasses'] == ['WFURLContentItem']
     for a in workflow['WFWorkflowActions']:
         p = a['WFWorkflowActionParameters']
+        # Beta1's device failures: no item-existence checks for empty text,
+        # and no obsolete picker flag on the modern Get File action.
+        if a['WFWorkflowActionIdentifier'] == 'is.workflow.actions.conditional':
+            assert p.get('WFCondition') != 100
+        if a['WFWorkflowActionIdentifier'] == 'is.workflow.actions.documentpicker.open':
+            assert not p.get('WFShowFilePicker')
+            assert p.get('WFGetFilePath')
+        if a['WFWorkflowActionIdentifier'] == 'is.workflow.actions.file.select':
+            assert p.get('SelectMultiple') is False
+            assert 'WFShowFilePicker' not in p
         if a['WFWorkflowActionIdentifier'] == 'is.workflow.actions.downloadurl':
             assert p['WFHTTPMethod'] == 'GET'
             assert not any(k in p for k in ('WFHTTPBody', 'WFFormValues', 'WFJSONValues'))

@@ -149,7 +149,7 @@ class Workflow:
         self.action('appendvariable', {'WFVariableName': name, 'WFInput': ref(value)})
 
     def count(self, value, kind='Items'):
-        return self.action('count', {'Input': ref(value), 'WFCountType': kind}, 'Count ' + kind)
+        return self.action('count', {'Input': ref(value), 'WFInput': ref(value), 'WFCountType': kind}, 'Count ' + kind)
 
     def match(self, value, *pattern):
         return self.action('text.match', {'text': token(value),
@@ -178,10 +178,12 @@ class Workflow:
         return g
 
     def if_has(self, value):
-        g = self.uid('if')
-        self.action('conditional', {'WFInput': {'Type': 'Variable', 'Variable': ref(value)},
-            'WFCondition': 100, 'GroupingIdentifier': g, 'WFControlFlowMode': 0})
-        return g
+        # Collection cardinality, not whether a content-item wrapper exists.
+        return self.if_gt(self.count(value))
+
+    def if_text(self, value):
+        # Native "has any value" can be true for an empty Text item.
+        return self.if_gt(self.count(value, 'Characters'))
 
     def if_match(self, value, *pattern):
         return self.if_gt(self.count(self.match(value, *pattern)))

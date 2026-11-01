@@ -49,7 +49,7 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
     menu_iter, answer_iter, file_iter = iter(menus), iter(answers), iter(files)
     result = {'menus': [], 'alerts': [], 'notifications': [], 'opened': [], 'requests': [], 'reads': [],
               'writes': [], 'exports': [], 'disk': dict(disk or {}), 'variables': {}, 'executed': 0,
-              'status': 'done', 'firstMenuActions': None}
+              'status': 'done', 'firstMenuActions': None, 'filePickers': 0, 'ignoredLegacyPickers': 0}
     variables, outputs = result['variables'], {}
     depth = 0
     json_reads = 0
@@ -135,7 +135,9 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
                         assert isinstance(lhs, list), 'Only exact array membership is used'
                         yes = rhs in lhs
                     elif condition == 100:
-                        yes = lhs not in (None, '', [], {})
+                        # A Text item can exist while its characters are empty.
+                        # The device video exposed this distinction in beta1.
+                        yes = lhs is not None and lhs != [] and lhs != {}
                     elif condition == 2:
                         yes = float(stringify(lhs)) > float(stringify(evaluate(p['WFNumberValue'])))
                     else:
@@ -191,6 +193,8 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
                 answer = hashlib.sha256(stringify(evaluate(p['WFInput'])).encode()).hexdigest()
             elif kind == 'detect.dictionary':
                 answer = json.loads(as_text(evaluate(p['WFInput'])))
+            elif kind == 'detect.text':
+                answer = as_text(evaluate(p['WFInput']))
             elif kind == 'base64encode':
                 value = stringify(evaluate(p['WFInput']))
                 if p['WFEncodeMode'] == 'Encode':
@@ -206,13 +210,24 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
                 answer = 'AppListPro'
             elif kind == 'documentpicker.open':
                 if p.get('WFShowFilePicker'):
-                    answer = next(file_iter)
+                    # iOS 15+ split Select File into its own action. This old
+                    # flag on Get File is not an interactive picker anymore.
+                    result['ignoredLegacyPickers'] += 1
+                    answer = None
                 else:
                     path = p['WFGetFilePath']
                     result['reads'].append(path)
                     if on_read:
                         on_read(path, result)
                     answer = result['disk'].get(path)
+            elif kind == 'file.select':
+                assert p.get('SelectMultiple', False) is False
+                assert 'WFShowFilePicker' not in p and 'WFSelectMultiple' not in p
+                result['filePickers'] += 1
+                answer = next(file_iter)
+                if answer is None:
+                    result['status'] = 'cancelled'
+                    raise Halt()
             elif kind == 'setitemname':
                 answer = File(p['WFName'], as_text(evaluate(p['WFInput'])))
             elif kind == 'documentpicker.save':
@@ -227,7 +242,12 @@ def run(workflow, menus=(), answers=(), disk=None, files=(), network=None, apps=
                         result['status'] = 'io-error'
                         raise Halt()
                     if rewrite_json:
-                        file = File(file.name, json.dumps(json.loads(file.body), ensure_ascii=False, sort_keys=True, indent=2))
+                        try:
+                            data = json.loads(file.body)
+                        except ValueError:
+                            pass
+                        else:
+                            file = File(file.name, json.dumps(data, ensure_ascii=False, sort_keys=True, indent=2))
                     if corrupt_save == path:
                         data = json.loads(file.body)
                         data['payload'] = 'AAAA'

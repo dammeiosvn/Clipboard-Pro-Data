@@ -5,8 +5,9 @@ import hashlib
 import json
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '1.1.0-beta.1'
-BASE_URL = 'https://raw.githubusercontent.com/dammeiosvn/Clipboard-Pro-Data/main/applist-pro/releases/' + VERSION + '/'
+VERSION = '1.1.0-beta.2'
+DATA_VERSION = '1.1.0-beta.1'
+BASE_URL = 'https://raw.githubusercontent.com/dammeiosvn/Clipboard-Pro-Data/main/applist-pro/releases/' + DATA_VERSION + '/'
 LANGUAGES = {
     'vi': 'Tiếng Việt', 'en': 'English', 'en-GB': 'English (UK)',
     'ja': '日本語', 'ko': '한국어', 'zh-Hans': '简体中文', 'zh-Hant': '繁體中文',
@@ -34,7 +35,7 @@ def package(strings):
 def publish():
     catalog = json.loads((ROOT / 'config/strings.json').read_text())
     assert set(catalog) == set(LANGUAGES)
-    out = ROOT / 'releases' / VERSION
+    out = ROOT / 'releases' / DATA_VERSION
     out.mkdir(parents=True, exist_ok=True)
     descriptors = {}
     for code, name in LANGUAGES.items():
@@ -46,7 +47,7 @@ def publish():
         (out / (code + '.txt')).write_text(compact(env))
         (out / (code + '.json')).write_text(json.dumps(strings, ensure_ascii=False, indent=2) + '\n')
         descriptors[code] = {'name': name, 'sha256': env['sha256']}
-    manifest = {'productId': 'applist-pro', 'schemaVersion': '2', 'version': VERSION,
+    manifest = {'productId': 'applist-pro', 'schemaVersion': '2', 'version': DATA_VERSION,
                 'author': '© Sentechtipsvn', 'languages': descriptors}
     (out / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
     return descriptors

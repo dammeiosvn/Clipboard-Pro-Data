@@ -1,0 +1,26 @@
+{
+  "baseline": "1.1.0-beta.1",
+  "fix": "1.1.0-beta.2",
+  "evidence": "User-provided iPhone screen recording; no user JSON content was extracted or published",
+  "baselineReproduced": {
+    "freshSetup": {
+      "observed": ["Invalid data", "Danh sách đã thay đổi ở một phiên khác"],
+      "simulatorMatchedVideo": true,
+      "writes": 0
+    },
+    "fileImport": {
+      "observed": "File picker did not appear; Invalid data followed",
+      "simulatorMatchedVideo": true,
+      "filePickers": 0
+    }
+  },
+  "changes": [
+    "Use character count for text content and item count for collections instead of condition 100",
+    "Only run concurrent-revision validation for a complete 64-character stored digest",
+    "Use is.workflow.actions.file.select with SelectMultiple=false",
+    "Preserve a chosen legacy JSON file while configuring its language",
+    "Do not write an empty list before pending legacy import confirmation",
+    "Accept a UTF-8 BOM on imported JSON"
+  ],
+  "fixedEngineDeviceVerified": false
+}
